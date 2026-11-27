@@ -3,7 +3,7 @@
 // Each player's browser talks to iNaturalist directly (no server in between):
 //   * at most one request per second from this browser (iNaturalist's guideline),
 //     with the quiz you're looking at going ahead of background work;
-//   * every answer is cached in IndexedDB, so repeat lookups are instant;
+//   * answers are cached in IndexedDB, trimmed to the fields the app uses, so repeat lookups are instant;
 //   * if two parts of the app ask for the same thing at once, only one request is made;
 //   * if iNaturalist can't be reached, an older cached answer is used when there is one.
 // Same endpoints and behaviour as app/inat_client.py.
@@ -92,18 +92,60 @@ IQ.inat = (() => {
     throw IQ.util.error(`iNaturalist kept failing for ${path}`, 502);
   }
 
+  // ---- keep only what the app uses ---------------------------------------------
+  // iNaturalist's answers are much bigger than what we need (every observation comes
+  // with its full identification history, user profile and so on). We keep just the
+  // fields the app reads, so saved answers take a small fraction of the space.
+  const pick = (o, keys) => {
+    const out = {};
+    for (const k of keys) if (o[k] !== undefined && o[k] !== null) out[k] = o[k];
+    return out;
+  };
+  function slimTaxon(t) {
+    if (!t) return t;
+    const out = pick(t, ["id", "name", "preferred_common_name", "rank", "iconic_taxon_name", "ancestor_ids",
+                         "wikipedia_url", "matched_term"]);
+    if (t.ancestors) out.ancestors = t.ancestors.map((a) => ({ id: a.id, rank: a.rank }));
+    if (t.default_photo) out.default_photo = pick(t.default_photo, ["square_url", "medium_url", "url", "license_code"]);
+    return out;
+  }
+  function slimObservation(o) {
+    const out = pick(o, ["id", "observed_on", "place_guess", "location", "obscured", "positional_accuracy", "faves_count"]);
+    if (o.user) out.user = { login: o.user.login };
+    if (o.taxon) out.taxon = pick(o.taxon, ["id", "ancestor_ids"]);
+    const open = (p) => (cfg.OPEN_LICENCES.includes((p.license_code || "").toLowerCase()) ? 0 : 1);
+    out.photos = (o.photos || []).filter((p) => p.url).sort((a, b) => open(a) - open(b))   // open-licence first
+      .slice(0, cfg.PHOTOS_KEPT_PER_OBSERVATION)
+      .map((p) => pick(p, ["url", "attribution", "license_code"]));
+    const ann = (o.annotations || []).filter((a) => a.controlled_attribute_id === cfg.ALIVE_OR_DEAD_TERM)
+      .map((a) => ({ controlled_attribute_id: a.controlled_attribute_id, controlled_value_id: a.controlled_value_id }));
+    if (ann.length) out.annotations = ann;
+    return out;
+  }
+  function slim(path, data) {
+    if (!data || !Array.isArray(data.results)) return data;
+    let fn;
+    if (path.startsWith("/observations/species_counts") || path.startsWith("/identifications/similar_species")) {
+      fn = (r) => ({ count: r.count, taxon: slimTaxon(r.taxon) });
+    } else if (path.startsWith("/observations")) fn = slimObservation;
+    else if (path.startsWith("/taxa")) fn = slimTaxon;
+    else return data;
+    return { total_results: data.total_results, results: data.results.map(fn) };
+  }
+
   // GET with cache. o.bg = background priority (warm-up and deck building).
+  // o.noCache = don't save it (search-as-you-type answers, which are rarely asked twice).
   function get(path, params = {}, ttlKind = "default", o = {}) {
     const key = cacheKey(path, params);
     if (inFlight.has(key)) return inFlight.get(key);
     const p = (async () => {
       const ttl = cfg.CACHE_TTL[ttlKind] ?? cfg.CACHE_TTL.default;
-      const row = await IQ.store.cacheGet(key);
+      const row = o.noCache ? null : await IQ.store.cacheGet(key);
       if (row && IQ.util.now() - row.fetched_at < ttl) return row.response;
       let data;
-      try { data = await fetchJson(path, params, !!o.bg); }
+      try { data = slim(path, await fetchJson(path, params, !!o.bg)); }
       catch (e) { if (row) return row.response; throw e; }
-      await IQ.store.cachePut(key, data);
+      if (!o.noCache) await IQ.store.cachePut(key, data);
       return data;
     })();
     inFlight.set(key, p);
@@ -132,12 +174,12 @@ IQ.inat = (() => {
   const onlySpecies = (rs) => rs.filter((r) => (r.taxon || {}).rank === "species");
 
   return {
-    snapToGrid, cacheKey, get, cached, requestsToday: () => todayCount().n,
+    snapToGrid, cacheKey, get, cached, slim, requestsToday: () => todayCount().n,
     setFetcher(fn) { fetcher = fn || defaultFetch; },
     setMinInterval(seconds) { minInterval = seconds * 1000; },
 
     async autocompleteTaxa(q, perPage = 10) {
-      return (await get("/taxa/autocomplete", { q, per_page: perPage, is_active: "true" }, "taxa")).results;
+      return (await get("/taxa/autocomplete", { q, per_page: perPage, is_active: "true" }, "taxa", { noCache: true })).results;
     },
     async searchTaxa(q, rank = null, perPage = 10, o = {}) {
       return (await get("/taxa", { q, rank, per_page: perPage, is_active: "true" }, "taxa", o)).results;
@@ -151,7 +193,7 @@ IQ.inat = (() => {
       return out;
     },
     async autocompletePlaces(q, perPage = 10) {
-      return (await get("/places/autocomplete", { q, per_page: perPage }, "places")).results;
+      return (await get("/places/autocomplete", { q, per_page: perPage }, "places", { noCache: true })).results;
     },
     async speciesCounts({ taxon_id = null, place_id = null, lat = null, lng = null, radius_km = null,
                           per_page = 100, page = 1 } = {}, o = {}) {

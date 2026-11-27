@@ -31,7 +31,17 @@ the same screens.
 * **Each player talks to iNaturalist directly**, from their own browser. The
   1 request per second limit applies per player, so more players don't slow each
   other down and you never need an API key. Answers are cached in the browser
-  (IndexedDB), the same way the local app caches them in SQLite.
+  (IndexedDB), like the local app caches them in SQLite.
+* **It stays light.** The browser saves your decks, species and answers, plus a
+  small, short-lived copy of recent iNaturalist results so the quiz is quick:
+  - only the fields the app uses are saved, and search-as-you-type isn't saved;
+  - saved results are deleted after 14 days, and at most the newest 1,500 are kept;
+  - 12 observations per species, at most 4 photos each;
+  - each time the page opens it tidies away old prepared questions, finished
+    background jobs, photo lists for species you've removed, and extra copies on
+    old answers. Nothing that counts as progress is deleted;
+  - **Settings → Free up space** deletes the saved results and photo lists now,
+    and keeps your progress. The next few questions take a moment longer.
 * **Photos load straight from iNaturalist.** Nothing is copied or re-hosted.
   Only photos with an **open licence** (Creative Commons or public domain) are
   used, and the photographer and licence are shown under every photo. See
@@ -52,7 +62,7 @@ the same screens.
 | Python + SQLite on your computer | JavaScript + IndexedDB in the browser |
 | Photos saved in `data/images` (work offline) | Photos load from iNaturalist (browser caches them a while) |
 | All photos | Open-licence photos only |
-| 50 photos kept per species | 20 photos kept per species (saves browser memory) |
+| 50 observations kept per species | 12 observations kept per species, 4 photos each (keeps the browser light) |
 | `http://127.0.0.1:8000` | `http://127.0.0.1:8000/play/` locally, or your GitHub Pages address |
 
 ## Try it on your computer
@@ -75,7 +85,7 @@ the same screens.
 
 GitHub Pages serves the website from your repository. The file
 `.github/workflows/pages.yml` does the work: every time you push changes to
-`web/` or `static/` on the `main` branch, GitHub puts the site together and
+`web/` or `static/` on your main branch (`main` or `master`), GitHub puts the site together and
 publishes it.
 
 **Before you publish**, read [13 Putting it online responsibly](13-compliance.md)
@@ -122,12 +132,12 @@ licences' and OpenStreetMap's rules, and the few things only you can decide.
 |---|---|
 | `web/index.html` | The website's page: loads `static/local/*` then the shared screens |
 | `static/local/config.js` | Settings (rate limit, cache times, licences) and small helpers |
-| `static/local/store.js` | Browser storage (IndexedDB), backup and restore |
-| `static/local/inat.js` | iNaturalist client: 1 req/s, quiz first, cache, open-licence filter |
+| `static/local/store.js` | Browser storage (IndexedDB), tidying up, free up space, backup and restore |
+| `static/local/inat.js` | iNaturalist client: 1 req/s, quiz first, slim cache, open-licence filter |
 | `static/local/fsrs.js`, `scheduler.js` | Spaced repetition (same numbers as `app/fsrs.py`, checked by a test) |
 | `static/local/taxa.js`, `decks.js`, `distractors.js`, `quiz.js`, `warmup.js`, `stats.js`, `jobs.js` | Same as the Python modules with the same names |
 | `static/local/router.js` | Answers the screens' `/api/...` requests |
-| `static/views/settings.js` | Settings page: backup, restore, privacy, requests today, delete everything |
+| `static/views/settings.js` | Settings page: backup, restore, privacy, requests today, free up space, delete everything |
 | `web/tests.html`, `web/tests/` | Tests for the website version (with a pretend iNaturalist) |
 | `.github/workflows/pages.yml` | Publishes the website on GitHub Pages |
 

@@ -99,6 +99,14 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 16. Keep the website's saved data small
+*Noted 2026-11-27.* Status: **Done (0.4.3)**.
+
+The website may be saving more than most people would like. Cut right back on
+what is saved, without losing progress: keep only the fields the app uses from
+iNaturalist, delete saved results sooner, keep fewer photos per species, tidy
+up old questions and jobs, and add a "Free up space" button.
+
 ### 15. Favour photos with more favourites
 *Requested 2026-11-27.* Status: **Done (0.4.2)**. See [09 Decks](09-decks.md#which-photos-favouring-well-liked-photos).
 
@@ -133,6 +141,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Lighter website storage, Free up space button | 0.4.3 |
 | Favour well-liked photos (Which photos setting) | 0.4.2 |
 | Hide dead organisms, plain "already running" message, keep browser progress | 0.4.1 |
 | Website version (browser only, GitHub Pages, backup, open-licence photos) | 0.4.0 |

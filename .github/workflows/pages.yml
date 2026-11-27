@@ -1,5 +1,5 @@
 # Publishes the website version (web/index.html + static/) to GitHub Pages
-# every time you push changes to the main branch. See docs/12-website.md.
+# every time you push changes to the main (or master) branch. See docs/12-website.md.
 #
 # One-time setup on GitHub: Settings > Pages > Build and deployment >
 # Source: "GitHub Actions".
@@ -7,7 +7,7 @@ name: Publish website
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master]   # whichever your repository uses
     paths: ["web/**", "static/**", ".github/workflows/pages.yml"]
   workflow_dispatch:          # lets you run it by hand from the Actions tab
 

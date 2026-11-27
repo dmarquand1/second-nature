@@ -29,10 +29,9 @@ IQ.quiz = (() => {
     a.controlled_attribute_id === cfg.ALIVE_OR_DEAD_TERM && a.controlled_value_id === cfg.DEAD_VALUE);
 
   async function storeObservations(taxonId, results, poolPlaceId) {
-    const now = U.now();
     const recs = [];
     for (const o of results.slice(0, cfg.OBSERVATIONS_PER_TAXON)) {
-      const photos = (o.photos || []).filter((p) => p.url)
+      const photos = (o.photos || []).filter((p) => p.url).slice(0, cfg.PHOTOS_KEPT_PER_OBSERVATION)
         .map((p) => ({ url: photoUrl(p.url), attribution: p.attribution ?? null, license: p.license_code ?? null }));
       if (!photos.length) continue;
       let lat = null, lng = null;
@@ -42,13 +41,12 @@ IQ.quiz = (() => {
       }
       const old = S.get("observations", o.id);
       recs.push({
-        id: o.id, taxon_id: taxonId, obs_taxon_id: (o.taxon || {}).id ?? null, photos, latitude: lat, longitude: lng,
+        id: o.id, taxon_id: taxonId, photos, latitude: lat, longitude: lng,
         obscured: o.obscured ? 1 : 0, positional_accuracy: o.positional_accuracy ?? null, place_guess: o.place_guess ?? null,
         observed_on: o.observed_on ?? null, observer: (o.user || {}).login ?? null,
-        uri: o.uri || `https://www.inaturalist.org/observations/${o.id}`,
         pool_place_id: poolPlaceId ?? old?.pool_place_id ?? null, dead: isDead(o) ? 1 : 0,
         faves: Number(o.faves_count) || 0,
-        times_shown: old?.times_shown ?? 0, last_shown: old?.last_shown ?? null, fetched_at: now,
+        times_shown: old?.times_shown ?? 0, last_shown: old?.last_shown ?? null,
       });
     }
     await S.putMany("observations", recs);
@@ -168,7 +166,7 @@ IQ.quiz = (() => {
   }
 
   function ratingPreviews(before, reviewedAt) {
-    if (!before) return {};
+    if (!before || before.stability === undefined) return {};   // old answers keep only the state
     const out = {};
     for (const r of [1, 2, 3, 4]) out[r] = fmtSeconds(Sch.fsrs.review(before, r, reviewedAt).due - reviewedAt);
     return out;
@@ -185,11 +183,11 @@ IQ.quiz = (() => {
     if (!q.answered || !review) {
       const correct = chosenTaxonId === card.taxon_id;
       const rating = Sch.ratingFromAnswer(correct, responseMs);
-      const [before, after] = await Sch.applyRating(card, rating);
+      const [before] = await Sch.applyRating(card, rating);
       review = await S.insert("reviews", {
         question_id: questionId, deck_id: q.deck_id, card_id: card.id, taxon_id: card.taxon_id, observation_id: obs.id,
         chosen_taxon_id: chosenTaxonId, correct: correct ? 1 : 0, rating, response_ms: responseMs ?? null,
-        choices: q.choices, reviewed_at: U.now(), card_before: before, card_after: after,
+        reviewed_at: U.now(), card_before: before,
       });
       await S.update("questions", questionId, { answered: 1 });
     }
@@ -198,7 +196,7 @@ IQ.quiz = (() => {
       correct: !!review.correct, rating: review.rating, intervals: ratingPreviews(review.card_before, review.reviewed_at),
       answer: T.public(ans), chosen: chosen ? T.public(chosen) : null,
       observation: {
-        id: obs.id, uri: obs.uri, observer: obs.observer, observed_on: obs.observed_on, place_guess: obs.place_guess,
+        id: obs.id, uri: `https://www.inaturalist.org/observations/${obs.id}`, observer: obs.observer, observed_on: obs.observed_on, place_guess: obs.place_guess,
         photos: usablePhotos(obs).slice(0, cfg.MAX_PHOTOS_PER_QUESTION).map((p) => ({ ...p, ...licenceInfo(p.license) })),
       },
     };
@@ -215,7 +213,7 @@ IQ.quiz = (() => {
     }
     const after = Sch.fsrs.review(review.card_before, rating, review.reviewed_at);
     await Sch.saveState(review.card_id, after);
-    await S.update("reviews", review.id, { rating, card_after: after });
+    await S.update("reviews", review.id, { rating });
     return { rating, due: after.due, state: after.state, previous_state: review.card_before.state };
   }
 

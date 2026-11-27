@@ -11,10 +11,15 @@ IQ.config = {
     taxa: 30 * 86400, places: 30 * 86400, similar_species: 14 * 86400,
     species_counts: 7 * 86400, observations: 3 * 86400, default: 86400,
   },
-  CACHE_MAX_AGE_DAYS: 60,            // older cached answers are deleted when the page opens
+  // Kept small so the site stays light: saved iNaturalist answers only make repeat visits
+  // faster, so old ones are simply dropped (and fetched again if ever needed).
+  CACHE_MAX_AGE_DAYS: 14,            // older cached answers are deleted when the page opens
+  CACHE_MAX_ENTRIES: 1500,           // and only the newest this many are kept
+  QUESTIONS_KEPT_DAYS: 2,            // prepared questions older than this are deleted (answers are kept)
   DEFAULT_NUM_CHOICES: 5,
   MAX_PHOTOS_PER_QUESTION: 4,
-  OBSERVATIONS_PER_TAXON: 20,       // photos kept per species (50 in the local app; smaller here to save memory)
+  OBSERVATIONS_PER_TAXON: 12,       // observations kept per species (50 in the local app; smaller here to save space)
+  PHOTOS_KEPT_PER_OBSERVATION: 4,   // photos kept per observation (a question shows at most 4)
   NEARBY_RADIUS_KM: 100,
   NEARBY_GRID_DEG: 1.0,
   PREFETCH_PENDING_MINUTES: 10,

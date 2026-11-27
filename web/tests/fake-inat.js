@@ -35,6 +35,8 @@ const FakeInat = (() => {
     annotations: [{ controlled_attribute_id: 17, controlled_value_id: i === 0 ? 19 : 18 }],
     // Observation 5 is the best-liked (12 favourites), observation 3 has 4.
     faves_count: { 5: 12, 3: 4 }[i] || 0,
+    // The real API sends lots the app never reads (identifications, comments, profiles...).
+    identifications: [{ id: i, body: "x".repeat(500), user: { login: "someone", icon_url: "https://example.org/x.png" } }],
     photos: [0, 1].map((p) => ({ url: `https://inaturalist-open-data.s3.amazonaws.com/photos/${tid}${i}${p}/square.jpg`,
       attribution: "(c) tester, CC BY", license_code: tid === 7 && p === 1 ? null : "cc-by" })),
   }));

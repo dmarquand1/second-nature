@@ -38,7 +38,14 @@ async function SettingsView() {
       <p id="usage" class="muted">Checking…</p>
       <p class="muted small">Requests to iNaturalist from this browser today: ${IQ.inat.requestsToday()}
         (kept under ${IQ.config.DAILY_REQUEST_LIMIT.toLocaleString()} a day, at most one a second).</p>
-      <button class="btn danger" id="wipe">Delete everything in this browser</button>
+      <p class="small">To stay light, this site saves only your decks, species and answers, plus a small, short-lived
+        copy of recent iNaturalist results so the quiz loads quickly. Old copies are deleted automatically.</p>
+      <div class="row wrap">
+        <button class="btn" id="free">Free up space (keeps your progress)</button>
+        <button class="btn danger" id="wipe">Delete everything in this browser</button>
+      </div>
+      <p class="muted small">Freeing up space deletes the saved iNaturalist results and photo lists. Your decks, species
+        and progress stay. The next few questions may take a moment longer while photos are fetched again.</p>
     </section>
 
     <section class="card" id="privacy">
@@ -69,10 +76,18 @@ async function SettingsView() {
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
     </section>`;
 
-  IQ.store.usageMb().then((mb) => {
+  const showUsage = () => IQ.store.usageMb().then((mb) => {
     if (here()) document.getElementById("usage").textContent =
-      mb == null ? "This browser doesn't say how much it's storing." : `About ${mb} MB stored (mostly saved iNaturalist answers, which make repeat visits fast).`;
+      mb == null ? "This browser doesn't say how much it's storing." : `About ${mb} MB stored by this site in this browser.`;
   });
+  showUsage();
+
+  document.getElementById("free").onclick = async () => {
+    await IQ.jobs.waitIdle();
+    await IQ.store.freeUpSpace();
+    toast("Space freed up. Your progress is kept.");
+    showUsage();
+  };
 
   document.getElementById("backup").onclick = () => {
     const blob = new Blob([JSON.stringify(IQ.store.exportData())], { type: "application/json" });

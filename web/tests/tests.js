@@ -328,6 +328,80 @@ test("backup and restore", async () => {
   await throws(IQ.store.importData({ hello: 1 }), /isn't an Second Nature backup/);
 });
 
+test("lightweight: saved iNaturalist answers keep only what the app uses", async () => {
+  const d = await listDeck();
+  const q = await api2("GET", `/api/decks/${d.id}/next`);
+  const call = FakeInat.calls("/observations")[0];
+  const row = await IQ.store.cacheGet(IQ.inat.cacheKey("/observations", call.params));
+  ok(row, "observations answer is cached");
+  const o = row.response.results[0];
+  ok(!o.identifications && !o.uri, "bulky fields dropped");
+  ok(o.photos.length <= IQ.config.PHOTOS_KEPT_PER_OBSERVATION && o.photos[0].url && o.photos[0].license_code, "photos kept");
+  ok(o.annotations && o.faves_count !== undefined && o.user.login === "tester", "fields the app needs kept");
+  const stored = IQ.store.all("observations")[0];
+  ok(!("uri" in stored) && !("obs_taxon_id" in stored) && !("fetched_at" in stored), "stored photo lists are slim");
+  const card = IQ.store.get("cards", IQ.store.get("questions", q.question_id).card_id);
+  const r = await api2("POST", `/api/questions/${q.question_id}/answer`, { taxon_id: card.taxon_id });
+  ok(r.observation.uri.endsWith(`/observations/${r.observation.id}`), "link to the observation still works");
+  const rev = IQ.store.all("reviews")[0];
+  ok(!("choices" in rev) && !("card_after" in rev), "answers don't keep extra copies");
+  // Search-as-you-type isn't saved at all.
+  await IQ.inat.autocompleteTaxa("Turdus");
+  ok(!(await IQ.inat.cached("/taxa/autocomplete", { q: "Turdus", per_page: 10, is_active: "true" })), "autocomplete not cached");
+});
+
+test("lightweight: old saved answers are trimmed, newest kept", async () => {
+  const now = Date.now() / 1000;
+  for (let i = 0; i < 5; i++) await IQ.store.cachePut(`k${i}`, { i }, now - (4 - i) * 60);
+  await IQ.store.cachePut("ancient", { old: true }, now - 30 * 86400);
+  await IQ.store.trimCache(14, 3);
+  eq(await IQ.store.cacheCount(), 3);
+  ok(!(await IQ.store.cacheGet("ancient")) && !(await IQ.store.cacheGet("k0")), "oldest deleted");
+  ok(await IQ.store.cacheGet("k4"), "newest kept");
+});
+
+test("lightweight: tidying up keeps every bit of progress", async () => {
+  const d = await listDeck();
+  for (let i = 0; i < 6; i++) {
+    const q = await api2("GET", `/api/decks/${d.id}/next?practice=true`);
+    await api2("POST", `/api/questions/${q.question_id}/answer`, { taxon_id: q.choices[i % 2].id });
+  }
+  // An answer saved by an older version, with the extra copies it used to keep.
+  const first = IQ.store.all("reviews")[0];
+  await IQ.store.put("reviews", { ...first, choices: [1, 2, 3], card_after: { ...first.card_before } });
+  for (const q of IQ.store.all("questions")) await IQ.store.update("questions", q.id, { created_at: 0 });
+  const before = [IQ.store.all("decks").length, IQ.store.all("cards").length, IQ.store.all("reviews").length];
+  const stats = JSON.stringify(await api2("GET", "/api/stats"));
+  const cards = JSON.stringify(IQ.store.all("cards"));
+  const done = await IQ.store.compact(2);
+  ok(done.questions === 5 && IQ.store.all("questions").length === 1, "old questions tidied (latest kept)");
+  eq([IQ.store.all("decks").length, IQ.store.all("cards").length, IQ.store.all("reviews").length], before, "progress kept");
+  eq(JSON.stringify(IQ.store.all("cards")), cards, "species progress unchanged");
+  eq(JSON.stringify(await api2("GET", "/api/stats")), stats, "statistics unchanged");
+  ok(IQ.store.all("reviews").every((r) => !("choices" in r) && !("card_after" in r)), "extra copies dropped");
+  const latest = new Map();
+  for (const r of IQ.store.all("reviews")) if (!latest.has(r.card_id) || r.id > latest.get(r.card_id).id) latest.set(r.card_id, r);
+  ok([...latest.values()].every((r) => "stability" in r.card_before), "latest answer per species keeps what rating needs");
+  // Studying carries on, and the latest answer's rating can still be changed.
+  const q = await api2("GET", `/api/decks/${d.id}/next?practice=true`);
+  const card = IQ.store.get("cards", IQ.store.get("questions", q.question_id).card_id);
+  await api2("POST", `/api/questions/${q.question_id}/answer`, { taxon_id: card.taxon_id });
+  eq((await api2("POST", `/api/questions/${q.question_id}/rate`, { rating: 4 })).rating, 4);
+});
+
+test("free up space: deletes saved iNaturalist results, keeps progress", async () => {
+  const d = await listDeck();
+  const q = await api2("GET", `/api/decks/${d.id}/next`);
+  await api2("POST", `/api/questions/${q.question_id}/answer`, { taxon_id: q.choices[0].id });
+  ok((await IQ.store.cacheCount()) > 0 && IQ.store.all("observations").length > 0);
+  const before = [IQ.store.all("decks").length, IQ.store.all("cards").length, IQ.store.all("reviews").length];
+  await IQ.store.freeUpSpace();
+  eq([await IQ.store.cacheCount(), IQ.store.all("observations").length], [0, 0]);
+  eq([IQ.store.all("decks").length, IQ.store.all("cards").length, IQ.store.all("reviews").length], before, "progress kept");
+  const q2 = await api2("GET", `/api/decks/${d.id}/next`);           // studying carries on
+  ok(q2.question_id && q2.photos.length);
+});
+
 test("unknown address gives a clear error", async () => {
   await throws(api2("GET", "/api/nope"), /Not found/);
 });

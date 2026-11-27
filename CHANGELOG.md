@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.3 (2026-11-27) - lighter website storage
+
+Website only (the local app is unchanged). Saves much less in the browser, and keeps all progress.
+- Saved iNaturalist answers keep only the fields the app uses (not identifications, comments, profiles and so on),
+  so each one is a small fraction of its old size. Search-as-you-type answers aren't saved at all.
+- Saved answers are deleted after 14 days (was 60), and only the newest 1,500 are kept. The old, larger saved
+  answers are deleted once when the new version first opens (storage version 2).
+- Photo lists: 12 observations per species (was 20) and at most 4 photos each; fewer fields per observation.
+- Tidied when the page opens: prepared questions older than 2 days, finished background jobs, photo lists for
+  species no longer in a deck, and extra copies on old answers. Every deck, species card and answer is kept, so
+  progress, statistics and backups are unchanged.
+- Settings: new **Free up space (keeps your progress)** button, and a short note on what is saved.
+- Publish workflow comment updated (it runs on `main` or `master`).
+- Tests: four more browser tests (slim saved answers, trimming, tidying keeps progress, free up space).
+
 ## 0.4.2 (2026-11-27) - favour well-liked photos
 
 - **Which photos** deck setting (New deck and Edit pages): **Mixed** (default, favourited photos likelier first),
