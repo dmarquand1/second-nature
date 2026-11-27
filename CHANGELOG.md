@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (unreleased)
+
+- Hide the harmless httpx/Starlette deprecation warning (`pytest.ini`).
+- Browser tests are skipped (not errors) when Playwright is blocked, e.g. by a work laptop's
+  Application Control policy. Playwright moved out of `requirements-dev.txt` into optional `requirements-ui.txt`.
+
 ## 0.3.0 (2026-11-27) - speed, big decks, editing, stats, zoom, polish
 
 - **Faster**: 2 questions are prepared ahead (with photos downloaded) while you answer; each deck is

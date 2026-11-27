@@ -21,13 +21,18 @@ pytest -v
 ## Browser tests (optional, one-time setup)
 
 `tests/test_ui.py` opens the real app in a headless Chromium and clicks
-through it. It's skipped until Playwright's browser is installed:
+through it. It's skipped unless Playwright is installed and allowed to run:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements-ui.txt
 python -m playwright install chromium
 pytest tests/test_ui.py
 ```
+
+**Work laptops:** some organisations block Playwright's helper program
+(`node.exe`) with an "Application Control policy". Then the 4 browser tests
+are simply **skipped**; everything else still runs. To remove Playwright again:
+`pip uninstall playwright`.
 
 ## What is covered
 

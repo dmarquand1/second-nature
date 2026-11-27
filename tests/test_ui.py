@@ -1,9 +1,11 @@
 """Browser tests for the screens (zoom, questions ready ahead, edit page, stats page, shortcuts).
 
-These are optional: they run only if Playwright is installed, see docs/01-getting-started.md:
-    pip install playwright
+These are optional: they run only if Playwright is installed and allowed to run
+on your computer (see docs/11-testing.md):
+    pip install -r requirements-ui.txt
     python -m playwright install chromium
-Otherwise they are skipped and the rest of the tests still run.
+Otherwise they are skipped and the rest of the tests still run. Some work
+computers block Playwright's helper program (node.exe); they are skipped then too.
 """
 import os
 import socket
@@ -48,7 +50,11 @@ def server(fake, monkeypatch):
 
 @pytest.fixture()
 def page(server):
-    with sync_api.sync_playwright() as p:
+    try:
+        pw = sync_api.sync_playwright().start()
+    except Exception as exc:   # e.g. "An Application Control policy has blocked this file"
+        pytest.skip(f"Playwright can't run on this computer: {str(exc).splitlines()[0][:200]}")
+    with _stop_when_done(pw) as p:
         try:
             # INAT_QUIZ_CHROMIUM lets you point at a Chrome/Chromium you already have.
             exe = os.environ.get("INAT_QUIZ_CHROMIUM")
@@ -65,6 +71,17 @@ def page(server):
         yield pg
         browser.close()
         assert not errors, errors
+
+
+class _stop_when_done:
+    def __init__(self, pw):
+        self.pw = pw
+
+    def __enter__(self):
+        return self.pw
+
+    def __exit__(self, *exc):
+        self.pw.stop()
 
 
 def _make_deck(page, names="Turdus merula\nSong Thrush\nRedwing\nNotabird"):

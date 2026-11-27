@@ -105,12 +105,9 @@ pytest
 ```
 
 All tests should pass. They use a fake iNaturalist, so they work offline.
-The browser tests are skipped until you install their browser once:
-
-```bash
-python -m playwright install chromium
-pytest
-```
+4 optional browser tests are skipped unless you set them up
+(`pip install -r requirements-ui.txt`, then `python -m playwright install chromium`).
+Some work laptops block them; that's fine, they just stay skipped.
 
 More in [11 Testing](11-testing.md).
 

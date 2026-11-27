@@ -1,0 +1,6 @@
+# Optional: browser tests (tests/test_ui.py).
+#   pip install -r requirements-ui.txt
+#   python -m playwright install chromium
+# Some work computers block Playwright (Application Control policy); the tests are skipped then.
+-r requirements-dev.txt
+playwright>=1.45
