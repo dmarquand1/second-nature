@@ -354,6 +354,24 @@ test("new species order: added, common, rare, relatives, grouped, variety", asyn
   eq(vo.slice(0, 2).map((c) => c.taxon_id).sort(), [6, 7], "variety: something different first");
 });
 
+test("a new deck is built straight away, even while another deck is warming up", async () => {
+  IQ.inat.setMinInterval(0.02);                        // make requests take a little time
+  const all = ["Turdus merula", "Song Thrush", "Mistle Thrush", "Redwing", "Fieldfare", "European Robin", "Common Nightingale"];
+  const a = await api2("POST", "/api/decks", { name: "A", source_type: "list", species: all });
+  for (let i = 0; i < 500 && !IQ.store.where("jobs", (j) => j.kind === "warmup" && j.status === "running").length; i++) {
+    await IQ.util.sleep(10);
+  }
+  const b = await api2("POST", "/api/decks", { name: "B", source_type: "list", species: ["Redwing"] });
+  await IQ.jobs.waitIdle();
+  const js = IQ.store.all("jobs").sort((x, y) => x.id - y.id);
+  const buildB = js.find((j) => j.kind === "build" && j.deck_id === b.id);
+  const warmA = js.filter((j) => j.kind === "warmup" && j.deck_id === a.id);
+  ok(warmA[0].result.paused, "A's warm-up paused for B");
+  ok(buildB.finished_at <= warmA[warmA.length - 1].finished_at, "B built before A's warm-up finished");
+  ok(warmA[warmA.length - 1].status === "done" && !warmA[warmA.length - 1].result.paused, "A's warm-up carried on");
+  eq((await api2("GET", `/api/decks/${b.id}`)).num_cards, 1);
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();

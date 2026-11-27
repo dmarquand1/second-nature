@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.7 (2026-11-27) - new decks no longer wait
+
+- Fix: a new deck's species could take minutes to appear (or seem not to arrive at all) when another deck was
+  still getting its photos and look-alikes ready, because background jobs ran strictly one after another.
+  Now building a deck always goes first, and a running warm-up pauses between species to let it, then carries on.
+  Local app and website.
+- Tests: `tests/test_job_priority.py` and one more browser test.
+
 ## 0.4.6 (2026-11-27) - order of new species, What's new page
 
 - **New species order** deck setting (New deck and Edit pages): **Mixed up** (default, as before), **In the order

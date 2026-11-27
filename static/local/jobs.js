@@ -1,6 +1,8 @@
 // Background jobs (building decks, warming up photos), like app/jobs.py.
-// One job runs at a time; its iNaturalist requests use background priority,
-// so the question you're looking at always goes first.
+// One job runs at a time. Building a deck goes ahead of warming up, and a running
+// warm-up pauses between species to let a waiting build go first (see warmup.js).
+// Their iNaturalist requests use background priority, so the question you're
+// looking at always goes first.
 // Jobs only run while the page is open. If you close the tab, the job is
 // marked "interrupted" next time and you can add the rest from Edit.
 IQ.jobs = (() => {
@@ -34,7 +36,8 @@ IQ.jobs = (() => {
     if (running) return;
     running = true;
     while (queue.length) {
-      const id = queue.shift();
+      const b = queue.findIndex((q) => (S.get("jobs", q) || {}).kind === "build");     // builds first
+      const [id] = queue.splice(b >= 0 ? b : 0, 1);
       const job = S.get("jobs", id);
       if (!job || job.status !== "queued") continue;
       const fn = handlers[job.kind];
@@ -63,6 +66,8 @@ IQ.jobs = (() => {
   }
 
   const get = (id) => S.get("jobs", id);
+  // True if a deck build is queued (a running warm-up then pauses to let it go first).
+  const buildWaiting = () => queue.some((q) => { const j = S.get("jobs", q); return j && j.kind === "build" && j.status === "queued"; });
 
   function deckJobs(deckId) {
     const js = S.where("jobs", (j) => j.deck_id === deckId);
@@ -74,5 +79,5 @@ IQ.jobs = (() => {
   // Resolves when no job is queued or running (used by tests).
   const waitIdle = () => (running || queue.length ? new Promise((r) => idleWaiters.push(r)) : Promise.resolve());
 
-  return { handler, submit, get, deckJobs, waitIdle, markInterrupted };
+  return { handler, submit, get, deckJobs, waitIdle, markInterrupted, buildWaiting };
 })();

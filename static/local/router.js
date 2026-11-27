@@ -1,7 +1,7 @@
 // The website version's "backend": the screens call the same /api/... addresses
 // as the local app, and this answers them inside the browser instead of a server.
 // (static/api.js sends requests here when IQ.router exists.)
-IQ.VERSION = "0.4.6";
+IQ.VERSION = "0.4.7";
 
 IQ.ready = (async () => {
   await IQ.store.open();

@@ -4,8 +4,11 @@ Two kinds:
   * build  - find the species for a deck (big pasted lists, big groups/places)
   * warmup - fetch photos and look-alikes for a deck's species ahead of time
 
-One worker thread runs jobs in order. Its iNaturalist requests run with
-background priority, so the quiz you're looking at always goes first.
+One worker thread runs jobs one at a time. Building a deck goes ahead of
+warming up (a new deck shouldn't wait for photos of another deck), and a
+running warm-up pauses between species to let a waiting build go first,
+then carries on. iNaturalist requests run with background priority, so the
+quiz you're looking at always goes first.
 Progress is stored in the `jobs` table and shown in the app.
 """
 import json
@@ -17,7 +20,7 @@ import traceback
 from .db import get_conn
 from .inat_client import background_priority
 
-_queue: "queue.Queue[int]" = queue.Queue()
+_queue: "queue.PriorityQueue[tuple[int, int]]" = queue.PriorityQueue()   # (priority, job id)
 _handlers = {}
 _worker: threading.Thread | None = None
 _worker_lock = threading.Lock()
@@ -59,9 +62,15 @@ def submit(kind: str, deck_id: int | None, params: dict | None = None, dedupe: b
         )
         job_id = cur.lastrowid
     _idle.clear()
-    _queue.put(job_id)
+    _queue.put((0 if kind == "build" else 1, job_id))
     _ensure_worker()
     return job_id
+
+
+def build_waiting() -> bool:
+    """True if a deck build is queued (a running warm-up then pauses to let it go first)."""
+    with get_conn() as conn:
+        return conn.execute("SELECT 1 FROM jobs WHERE kind = 'build' AND status = 'queued' LIMIT 1").fetchone() is not None
 
 
 def _update(job_id: int, **fields) -> None:
@@ -72,7 +81,7 @@ def _update(job_id: int, **fields) -> None:
 
 def _run() -> None:
     while True:
-        job_id = _queue.get()
+        _, job_id = _queue.get()
         try:
             with get_conn() as conn:
                 job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()

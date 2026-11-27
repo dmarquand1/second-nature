@@ -20,7 +20,7 @@ So about **1-2 requests per new species** (it was 4-6 before 0.3.1). A
 
 | When | What the app does | Code |
 |---|---|---|
-| You create a deck | Species are found in the background (progress bar on the deck page). Then a **warm-up** starts. | `app/decks.py`, `app/jobs.py` |
+| You create a deck | Species are found in the background (progress bar on the deck page). Then a **warm-up** starts. Building a deck always goes ahead of another deck's warm-up, which pauses and carries on afterwards. | `app/decks.py`, `app/jobs.py` |
 | Warm-up | For each species, soonest-due first: taxonomy, the pool of research-grade observations, the look-alike candidates for the photo you'll see next, and the photos for the next 15 species. | `app/warmup.py` |
 | You open a deck to study | The warm-up is started again if needed (it skips what's already cached). A small bar shows its progress. | `static/views/quiz.js` |
 | You look at a question | The next **2 questions** are prepared and their photos downloaded. | `static/views/quiz.js` (`AHEAD`) |

@@ -31,6 +31,12 @@ IQ.warmup = (() => {
     for (let i = 1; i <= cards.length; i++) {
       const card = cards[i - 1];
       if (!S.get("decks", deckId)) break;
+      if (IQ.jobs.buildWaiting()) {
+        // A new deck is waiting to be built: let it go first, then carry on from scratch
+        // (what's done so far is saved, so the second run is quick).
+        await IQ.jobs.submit("warmup", deckId, {});
+        return { species: total, failed, paused: true };
+      }
       if (!S.get("cards", card.id)) continue;
       try {
         await IQ.taxa.ensureDetails(card.taxon_id, o);

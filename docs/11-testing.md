@@ -84,6 +84,7 @@ website screens.
 | `test_stats.py` | Totals, streak, daily, states, forecast, struggles, mix-ups, per deck; mix-ups feeding the look-alikes |
 | `test_polish.py` | Licences, cache URLs, interrupted jobs after restart, version info (same everywhere), `/play/` pages served |
 | `test_dead.py` | Reading the "Alive or Dead" annotation, dead photos hidden by default, shown when the setting is off, a question even if all photos are dead, setting via the API, photos from older versions checked once |
+| `test_job_priority.py` | A new deck is built straight away while another deck is warming up (the warm-up pauses, then carries on) |
 | `test_new_order.py` | New species order: default and setting via the API, added/common/rare, counts looked up for older species, relatives of hardest/easiest, one group at a time, variety, the quiz follows the order |
 | `test_answer_source.py` | Wrong answers from: anywhere by default, only this deck (fewer choices, no extra lookups), mostly this deck tops up, big decks stay inside, one-species decks still get choices, relatives score higher, setting via the API |
 | `test_photo_choice.py` | Favourites stored, best first, mixed tilts towards favourites, every photo still comes round, setting via the API (and bad values refused), older photos get favourites, most-favourited request with fallback |

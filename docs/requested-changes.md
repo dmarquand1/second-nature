@@ -99,6 +99,13 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 20. New decks not getting species
+*Noted 2026-11-27.* Status: **Fixed (0.4.7)**.
+
+Creating a new deck didn't seem to add any species. Cause: background jobs ran
+one at a time, so a new deck's build waited behind another deck's warm-up
+(photos and look-alikes), which can take minutes. Builds now go first.
+
 ### 19. Choose the order new species are shown, and a What's new page
 *Noted 2026-11-27.* Status: **Done (0.4.6)**.
 
@@ -165,6 +172,7 @@ delete saved progress. Show the result in Settings.
 
 | Change | Version |
 |---|---|
+| New decks no longer wait behind warm-ups (fix) | 0.4.7 |
 | New species order, What's new page | 0.4.6 |
 | "Wrong answers from" deck setting | 0.4.5 |
 | Welcome tour for new players (skippable) | 0.4.4 |

@@ -52,6 +52,11 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
     except InatError:
         pass   # fall back to one-by-one below
     for i, card in enumerate(cards, start=1):
+        if jobs.build_waiting():
+            # A new deck is waiting to be built: let it go first, then carry on from scratch
+            # (what's done so far is saved, so the second run is quick).
+            jobs.submit("warmup", deck_id, {})
+            return {"species": total, "failed": failed, "paused": True}
         try:
             ensure_details(card["taxon_id"])
             obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])

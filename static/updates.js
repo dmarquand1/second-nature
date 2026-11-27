@@ -5,6 +5,11 @@
 // newest entry (remembered in this browser only).
 const UPDATES = [
   {
+    version: "0.4.7", date: "27 November 2026", items: [
+      "Fixed: a new deck's species could take a long time to appear while another deck was still getting its photos ready. New decks now go first.",
+    ],
+  },
+  {
     version: "0.4.6", date: "27 November 2026", items: [
       "<b>New species order</b>: choose the order new species are introduced in each deck, such as common or rare species first, relatives of the ones you find hardest or know best, one group at a time, or variety first. Find it under <b>Edit</b> on any deck.",
       "This <b>What's new</b> page, so you can see what has changed.",
