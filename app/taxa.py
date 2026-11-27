@@ -37,27 +37,64 @@ def upsert_taxon(conn, t: dict) -> None:
     )
 
 
+RANKS = ("genus", "family", "order")
+
+
+def _save_details(t: dict, rank_of: dict[int, tuple[str, int]] | None = None) -> None:
+    """Store a taxon with its genus/family/order ids.
+    Uses t["ancestors"] when iNat includes it, otherwise `rank_of` (ancestor id -> rank)."""
+    ids = dict.fromkeys(RANKS)
+    if t.get("ancestors"):
+        for a in t["ancestors"]:
+            if a.get("rank") in ids:
+                ids[a["rank"]] = a["id"]
+    elif rank_of:
+        for aid in t.get("ancestor_ids") or []:
+            rank = rank_of.get(aid)
+            if rank in ids:
+                ids[rank] = aid
+    with get_conn() as conn:
+        upsert_taxon(conn, t)
+        conn.execute(
+            "UPDATE taxa SET genus_id = ?, family_id = ?, order_id = ?, details_fetched = 1 WHERE id = ?",
+            (ids["genus"], ids["family"], ids["order"], t["id"]),
+        )
+
+
 def ensure_details(taxon_id: int) -> dict:
     """Make sure we know the genus/family/order of a taxon. Returns the DB row as dict."""
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM taxa WHERE id = ?", (taxon_id,)).fetchone()
     if row and row["details_fetched"]:
         return dict(row)
-    t = get_client().taxon(taxon_id)
-    if not t:
-        return dict(row) if row else {}
-    ids = {"genus": None, "family": None, "order": None}
-    for a in t.get("ancestors") or []:
-        if a.get("rank") in ids:
-            ids[a["rank"]] = a["id"]
+    ensure_details_many([taxon_id])
     with get_conn() as conn:
-        upsert_taxon(conn, t)
-        conn.execute(
-            "UPDATE taxa SET genus_id = ?, family_id = ?, order_id = ?, details_fetched = 1 WHERE id = ?",
-            (ids["genus"], ids["family"], ids["order"], taxon_id),
-        )
         row = conn.execute("SELECT * FROM taxa WHERE id = ?", (taxon_id,)).fetchone()
-    return dict(row)
+    return dict(row) if row else {}
+
+
+def ensure_details_many(taxon_ids: list[int]) -> int:
+    """Fetch genus/family/order for many taxa at once: 30 per iNaturalist request
+    instead of one request each. Returns how many were fetched."""
+    with get_conn() as conn:
+        done = {r[0] for r in conn.execute(
+            f"SELECT id FROM taxa WHERE details_fetched = 1 AND id IN ({','.join('?' * len(taxon_ids))})",
+            list(taxon_ids)).fetchall()} if taxon_ids else set()
+    todo = [int(t) for t in dict.fromkeys(taxon_ids) if int(t) not in done]
+    if not todo:
+        return 0
+    client = get_client()
+    found = client.taxa_by_ids(todo)
+    # If iNat left out the ancestor list, look the ancestors up too (also batched,
+    # and shared: all thrushes have the same genus, family and order).
+    missing = {aid for t in found if not t.get("ancestors") for aid in (t.get("ancestor_ids") or [])
+               if aid != t["id"]}
+    rank_of = {}
+    if missing:
+        rank_of = {a["id"]: a.get("rank") for a in client.taxa_by_ids(sorted(missing))}
+    for t in found:
+        _save_details(t, rank_of)
+    return len(found)
 
 
 def get_taxon(conn, taxon_id: int) -> dict | None:

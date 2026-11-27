@@ -78,6 +78,7 @@ def _run() -> None:
                 job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
             if not job or job["status"] != "queued":
                 continue
+            from . import decks, warmup  # noqa: F401  (make sure every job kind is registered)
             fn = _handlers.get(job["kind"])
             if not fn:
                 _update(job_id, status="failed", message=f"Unknown job kind {job['kind']}")

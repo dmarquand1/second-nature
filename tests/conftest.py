@@ -17,6 +17,10 @@ SPECIES = {
 }
 
 
+HIGHER = {ORDER: ("Passeriformes", "order"), FAMILY: ("Turdidae", "family"),
+          GENUS: ("Turdus", "genus"), OTHER_GENUS: ("Erithacus", "genus")}
+
+
 def taxon_obj(tid):
     name, common, genus = SPECIES[tid]
     return {"id": tid, "name": name, "preferred_common_name": common, "rank": "species",
@@ -52,9 +56,21 @@ class FakeClient:
     def autocomplete_places(self, q, per_page=10):
         return [{"id": 6857, "display_name": "United Kingdom", "place_type": 12}]
 
+    omit_ancestors = False   # set True to test the "no ancestors in the batch response" path
+
     def taxa_by_ids(self, ids):
         self._log("taxa_by_ids", ids=list(ids))
-        return [taxon_obj(int(i)) for i in ids if int(i) in SPECIES]
+        out = []
+        for i in map(int, ids):
+            if i in SPECIES:
+                if self.omit_ancestors:
+                    out.append(taxon_obj(i))
+                else:
+                    out.append(self.taxon(i))
+                    self.calls.pop()   # don't log the inner taxon() call
+            elif i in HIGHER:
+                out.append({"id": i, "name": HIGHER[i][0], "rank": HIGHER[i][1]})
+        return out
 
     def species_counts_many(self, limit, progress=None, **kw):
         res = self.species_counts(taxon_id=kw.get("taxon_id"), place_id=kw.get("place_id"), per_page=500)
@@ -77,14 +93,30 @@ class FakeClient:
 
     def observations(self, taxon_id, place_id=None, per_page=50):
         self._log("observations", taxon_id=taxon_id, place_id=place_id)
+        return self._obs(taxon_id)
+
+    def _obs(self, taxon_id):
         return [
             {"id": taxon_id * 1000 + i, "uri": f"https://www.inaturalist.org/observations/{taxon_id * 1000 + i}",
              "observed_on": "2025-05-0%d" % (i + 1), "place_guess": "Oxford, UK", "location": "51.75,-1.25",
              "obscured": False, "positional_accuracy": 20, "user": {"login": "tester"}, "taxon": {"id": taxon_id},
              "photos": [{"url": f"https://inaturalist-open-data.s3.amazonaws.com/photos/{taxon_id}{i}{p}/square.jpg", "attribution": "(c) tester, CC BY",
                          "license_code": "cc-by"} for p in range(2)]}
-            for i in range(3)
+            for i in range(6)
         ]
+
+    def observations_many(self, taxon_ids, place_id=None, per_page=200):
+        """Like iNat: one request, mixed results, uneven (Fieldfare, id 5, gets only 2)."""
+        self._log("observations_many", taxon_ids=list(taxon_ids), place_id=place_id)
+        out = []
+        for t in taxon_ids:
+            if t not in SPECIES:
+                continue
+            obs = self._obs(t)[: 2 if t == 5 else 6]
+            for o in obs:   # pretend some are subspecies records with the species in their ancestry
+                o["taxon"] = {"id": t * 100 + 1, "ancestor_ids": [ORDER, FAMILY, SPECIES[t][2], t]}
+            out += obs
+        return out
 
 
 class FakeImageResponse:

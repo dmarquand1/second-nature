@@ -1,8 +1,20 @@
 # 08 Speed and offline photos
 
-iNaturalist allows about **1 request per second**. A brand-new species needs
-around 5-6 requests (taxonomy, photo pool, similar species, congeners, nearby
-species), so the app works ahead of you instead of making you wait.
+iNaturalist allows about **1 request per second**, so the app asks for as
+little as possible and works ahead of you instead of making you wait.
+
+## Requests per new species
+
+| Lookup | How | Requests |
+|---|---|---|
+| Taxonomy (genus, family, order) | 30 species per request | ~0.03 |
+| Photo pool | 10 species per request (rare species that come back with < 5 photos get their own request) | ~0.1–1 |
+| Similar species (what people confuse it with) | one per species | 1 |
+| Same genus, same family nearby | shared by all species in the genus / grid cell | small |
+| Same family / order fallbacks | only if there aren't enough look-alikes yet | usually 0 |
+
+So about **1-2 requests per new species** (it was 4-6 before 0.3.1). A
+100-species deck warms up in roughly 2-3 minutes.
 
 ## What happens
 
@@ -12,6 +24,7 @@ species), so the app works ahead of you instead of making you wait.
 | Warm-up | For each species, soonest-due first: taxonomy, the pool of research-grade observations, the look-alike candidates for the photo you'll see next, and the photos for the next 15 species. | `app/warmup.py` |
 | You open a deck to study | The warm-up is started again if needed (it skips what's already cached). A small bar shows its progress. | `static/views/quiz.js` |
 | You look at a question | The next **2 questions** are prepared and their photos downloaded. | `static/views/quiz.js` (`AHEAD`) |
+| A question appears | The **medium** photo (about 3x smaller) shows at once; the sharper large photo replaces it when loaded. Zooming loads the original. | `quiz.photo_sizes`, `showSharp()` |
 | A photo is shown | It's served from `data/images/` if it's there, otherwise downloaded once and saved. | `app/images.py` |
 
 Requests for the question you're looking at always **go before** background
@@ -22,8 +35,8 @@ work in the 1-per-second queue (`RateLimiter` in `app/inat_client.py`).
 
 ## What to expect
 
-- A **brand-new deck**: the first question takes about 10-20 seconds while the
-  first species are found. Questions get faster as the warm-up progresses.
+- A **brand-new deck**: the first question takes about 5-10 seconds (the first
+  species found is added straight away). Questions get faster as the warm-up progresses.
 - A **warmed-up deck**: the next question appears almost instantly.
 
 ## Offline photo cache
@@ -43,6 +56,6 @@ With a warmed-up deck and the photo cache, you can keep studying without interne
 | Setting | Default | Meaning |
 |---|---|---|
 | `NEARBY_GRID_DEG` | 1.0 | Grid size for shared "nearby" lookups |
-| `WARMUP_IMAGES_FOR_NEXT` | 15 | How many upcoming species get their photos downloaded by the warm-up |
+| `WARMUP_IMAGES_FOR_NEXT` | 15 | How many upcoming species get their (medium) photos downloaded by the warm-up |
 | `PREFETCH_PENDING_MINUTES` | 10 | How long a prepared-but-unanswered question keeps its species reserved |
 | `IMAGE_CACHE_MAX_MB` | 1500 | Photo cache size limit |

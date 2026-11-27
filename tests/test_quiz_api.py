@@ -14,7 +14,7 @@ def test_full_quiz_round(fake):
         assert len(q["choices"]) == 4
         assert 1 <= len(q["photos"]) <= 4
         assert q["location"]["lat"] == 51.75
-        assert "large.jpg" in q["photos"][0]["url"]
+        assert "medium.jpg" in q["photos"][0]["url"] and "large.jpg" in q["photos"][0]["large"]
         assert "answer" not in q  # the answer must not leak
 
         wrong = c.post(f"/api/questions/{q['question_id']}/answer", json={"taxon_id": 999999}).json()

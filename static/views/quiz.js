@@ -80,7 +80,7 @@ function QuizView(deckId) {
       if (/no species yet/i.test(e.message) && alive) {
         // The deck is still being built in the background: wait for its first species.
         quiz.innerHTML = `<p class="loading">Finding the first species for this deck on iNaturalist…</p>`;
-        setTimeout(() => alive && show(loadQuestion()), 2000);
+        setTimeout(() => alive && show(loadQuestion()), 1000);
         return;
       }
       quiz.innerHTML = `<p class="error">${esc(e.message)}</p><button class="btn" id="retry">Try again</button>`;
@@ -120,21 +120,33 @@ function QuizView(deckId) {
     quiz.querySelector(".main-photo").addEventListener("click", openZoom);
     quiz.querySelectorAll(".choice").forEach((b) => b.addEventListener("click", () => answer(+b.dataset.id)));
     drawMap(loc);
+    showSharp(0);
     startedAt = performance.now();
     fillAhead();
+  }
+
+  // Show the medium photo straight away, then swap in the large one once it has loaded.
+  function showSharp(i) {
+    const q = current, p = q.photos[i];
+    const img = document.getElementById("main-img");
+    img.src = p.url;
+    if (!p.large || p.large === p.url) return;
+    const big = new Image();
+    big.onload = () => { if (current === q && photoIndex === i) img.src = p.large; };
+    big.src = p.large;
   }
 
   function setPhoto(i) {
     if (!current || current.done) return;
     const n = current.photos.length;
     photoIndex = (i + n) % n;
-    document.getElementById("main-img").src = current.photos[photoIndex].url;
+    showSharp(photoIndex);
     document.querySelectorAll(".thumbs img").forEach((x) => x.classList.toggle("active", +x.dataset.i === photoIndex));
   }
 
   function openZoom() {
     if (!current || current.done) return;
-    Viewer.open(current.photos, photoIndex, (i) => setPhoto(i));
+    Viewer.open(current.photos.map((p) => ({ url: p.large || p.url, original: p.original })), photoIndex, (i) => setPhoto(i));
   }
 
   function showDone(c) {

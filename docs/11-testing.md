@@ -18,6 +18,19 @@ pytest tests/test_stats.py
 pytest -v
 ```
 
+## Live checks against the real iNaturalist (optional)
+
+The normal tests never touch the internet. To check that iNaturalist still
+answers the way the app expects (search, batched taxonomy, photos, licences,
+similar species, place counts, photo download), run:
+
+```bash
+pytest -m live
+```
+
+About 12 requests, ~15 seconds. Run it now and then, e.g. if the app suddenly
+can't find species or photos. Please don't run it in a loop.
+
 ## Browser tests (optional, one-time setup)
 
 `tests/test_ui.py` opens the real app in a headless Chromium and clicks
@@ -47,6 +60,8 @@ are simply **skipped**; everything else still runs. To remove Playwright again:
 | `test_scheduler.py` | Due/new queue, daily limit, done state, practice, rating override, database upgrades |
 | `test_quiz_api.py` | A full question/answer round, no repeats |
 | `test_speed.py` | Questions prepared ahead are different species, warm-up makes questions need no lookups, shared grid cells, quiz requests go first |
+| `test_speed_v031.py` | Batched taxonomy (with and without iNat's ancestor list), batched photo pools incl. uneven results and subspecies, warm-up uses batches, fallback lookups skipped, medium/large/original photo sizes, first species added straight away |
+| `test_live.py` | **Real iNaturalist** (only with `pytest -m live`) |
 | `test_images.py` | Photo cache: allowed hosts only, download once, trimming, local URLs |
 | `test_stats.py` | Totals, streak, daily, states, forecast, struggles, mix-ups, per deck; mix-ups feeding the look-alikes |
 | `test_polish.py` | Licences, cache URLs, interrupted jobs after restart, version info |

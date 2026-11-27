@@ -16,8 +16,8 @@ from . import config, images, jobs
 from .db import get_conn
 from .distractors import gather_candidates
 from .inat_client import InatError
-from .quiz import next_observation
-from .taxa import ensure_details
+from .quiz import _photo_url, fill_pools_batched, next_observation
+from .taxa import ensure_details, ensure_details_many
 
 
 def _cards_in_study_order(deck_id: int) -> list[dict]:
@@ -40,6 +40,15 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
     total = len(cards)
     progress(0, total, "Getting photos and look-alikes ready", force=True)
     failed = 0
+    ids = [c["taxon_id"] for c in cards]
+    # Batched first: taxonomy for 30 species per request, photo pools for 10 per request.
+    try:
+        progress(0, total, "Fetching taxonomy for all species", force=True)
+        ensure_details_many(ids)
+        progress(0, total, "Fetching photos for all species", force=True)
+        fill_pools_batched(ids, deck["place_id"])
+    except InatError:
+        pass   # fall back to one-by-one below
     for i, card in enumerate(cards, start=1):
         try:
             ensure_details(card["taxon_id"])
@@ -49,7 +58,7 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
                                   obs["latitude"], obs["longitude"], needed=deck["num_choices"] - 1)
                 if i <= config.WARMUP_IMAGES_FOR_NEXT:
                     photos = json.loads(obs["photos"])[: config.MAX_PHOTOS_PER_QUESTION]
-                    images.prefetch([p["url"] for p in photos])
+                    images.prefetch([_photo_url(p["url"], "medium") for p in photos])
         except InatError:
             failed += 1
         progress(i, total, f"Ready: {i} of {total} species")

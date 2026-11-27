@@ -39,6 +39,12 @@ def _photo_url(url: str, size: str = "large") -> str:
     return url
 
 
+def photo_sizes(url: str) -> dict:
+    """Local (cached) URLs for the sizes the browser uses."""
+    return {"url": local_url(_photo_url(url, "medium")), "large": local_url(_photo_url(url, "large")),
+            "original": local_url(_photo_url(url, "original"))}
+
+
 def _store_observations(conn, taxon_id: int, results: list[dict], pool_place_id) -> None:
     now = time.time()
     for o in results:
@@ -95,6 +101,36 @@ def observation_pool(taxon_id: int, place_id: int | None) -> list:
     return local or rows
 
 
+def fill_pools_batched(taxon_ids: list[int], place_id: int | None, group: int = 10, min_each: int = 5) -> int:
+    """Fetch photo pools for many species with one request per `group` species
+    (instead of one each). Species that come back with fewer than `min_each`
+    photos are left for observation_pool() to fetch on their own.
+    Returns the number of species whose pool was filled."""
+    with get_conn() as conn:
+        have = {r[0] for r in conn.execute(
+            "SELECT DISTINCT taxon_id FROM observations WHERE pool_place_id IS ?", (place_id,)).fetchall()}
+    todo = [t for t in dict.fromkeys(taxon_ids) if t not in have]
+    filled = 0
+    client = get_client()
+    for i in range(0, len(todo), group):
+        chunk = todo[i:i + group]
+        results = client.observations_many(chunk, place_id=place_id)
+        by_species: dict[int, list] = {t: [] for t in chunk}
+        for o in results:
+            tx = o.get("taxon") or {}
+            # The observation may be of a subspecies: match it to the species in its ancestry.
+            for sid in [tx.get("id"), *(tx.get("ancestor_ids") or [])]:
+                if sid in by_species:
+                    by_species[sid].append(o)
+                    break
+        with get_conn() as conn:
+            for sid, obs in by_species.items():
+                if len(obs) >= min_each:
+                    _store_observations(conn, sid, obs, place_id)
+                    filled += 1
+    return filled
+
+
 def _obs_order(r) -> tuple:
     # Least shown first; ties broken in a fixed shuffled order, so the deck warm-up
     # can prepare exactly the photo you'll see next.
@@ -148,8 +184,9 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
         "question_id": qid,
         "deck_id": deck_id,
         # Photos come through the local offline cache. Attribution is shown on reveal.
-        "photos": [{"url": local_url(p["url"]), "original": local_url(_photo_url(p["url"], "original"))}
-                   for p in photos],
+        # Medium photos (~3x smaller) appear first; the page swaps in the large one when it
+        # has loaded, and the viewer loads the original when you zoom in.
+        "photos": [photo_sizes(p["url"]) for p in photos],
         "location": {
             "lat": obs["latitude"], "lng": obs["longitude"],
             "obscured": bool(obs["obscured"]), "accuracy_m": obs["positional_accuracy"],

@@ -235,6 +235,17 @@ class InatClient:
         }
         return self.get("/observations", params, "observations")["results"]
 
+    def observations_many(self, taxon_ids: list[int], place_id=None, per_page: int = 200) -> list[dict]:
+        """Research-grade observations with photos for several species in ONE request."""
+        params = {
+            "taxon_id": ",".join(str(int(t)) for t in taxon_ids),
+            "place_id": place_id,
+            "quality_grade": "research",
+            "photos": "true",
+            "per_page": min(per_page, 200),
+        }
+        return self.get("/observations", params, "observations")["results"]
+
 
 _client: InatClient | None = None
 

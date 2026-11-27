@@ -109,7 +109,8 @@ def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int 
 
     # 6. Fallbacks when we are still short of options.
     def enough():
-        return len([c for c in cands.values() if c["score"] >= 1.0]) >= needed * 2
+        # A couple more strong options than we need is plenty: skip the extra lookups.
+        return len([c for c in cands.values() if c["score"] >= 1.0]) >= needed + 2
 
     if not enough() and target.get("family_id"):
         for r in safe(client.species_counts, taxon_id=target["family_id"], place_id=place_id, per_page=30):

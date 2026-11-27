@@ -10,7 +10,7 @@ from . import config, decks, images, jobs, quiz, stats, warmup
 from .db import init_db
 from .inat_client import InatError, get_client
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 @asynccontextmanager

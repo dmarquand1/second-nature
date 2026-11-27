@@ -69,6 +69,19 @@ your past mix-ups used as wrong-answer options.
 ### 7. Tests for every new feature
 *Requested 2026-11-27.* Status: **Done (0.3.0)**. See [11 Testing](11-testing.md).
 
+## Shipped in v0.3.1
+
+### 8. Even faster
+*Requested 2026-11-27.* Status: **Done (0.3.1)**.
+
+Batched lookups, fewer fallback lookups, medium photos first, first question
+sooner on a new deck, optional live iNaturalist checks. See [08](08-speed-and-offline.md).
+
+### 9. Tests on a locked-down work laptop
+*Reported 2026-11-27.* Status: **Done (0.3.1)**.
+
+Browser tests are skipped instead of erroring when Playwright is blocked.
+
 ## Open
 
 Nothing yet. Add new requests here.
@@ -77,6 +90,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Batched lookups, medium photos first, live checks, skip blocked browser tests | 0.3.1 |
 | Faster loading, offline photos, big lists, edit deck, stats, zoom, polish, tests | 0.3.0 |
 | FSRS spaced repetition | 0.2.0 |
 | First local version (decks, distractors, quiz) | 0.1.0 |

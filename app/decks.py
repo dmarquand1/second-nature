@@ -144,7 +144,8 @@ def _build_job(job_id: int, deck_id: int, params: dict, progress) -> dict:
                                               "common_name": taxon.get("preferred_common_name")})
                 batch.append(taxon)
             done += 1
-            if len(batch) >= 10:      # add in small batches so you can start studying straight away
+            # Add the very first species at once (so the first question can start), then in tens.
+            if len(batch) >= (1 if result["added"] == 0 else 10):
                 add(batch)
                 batch = []
             progress(done, total, f"Looked up {done} of {total} names")

@@ -1,10 +1,22 @@
 # Changelog
 
-## 0.3.1 (unreleased)
+## 0.3.1 (2026-11-27) - speed-ups
 
-- Hide the harmless httpx/Starlette deprecation warning (`pytest.ini`).
+- **Batched lookups**: taxonomy for 30 species per request (`taxa.ensure_details_many`), photos for
+  10 species per request (`quiz.fill_pools_batched`). Species with too few photos in a batch are
+  fetched on their own. A new species now needs about 1-2 requests instead of 4-6.
+- **Fewer fallback lookups**: "same family / same order" requests are skipped when there are already
+  a couple more good look-alikes than needed.
+- **Medium photos first**: the quiz shows the medium photo (about 3x smaller) immediately, swaps in the
+  large one once loaded; the zoom viewer starts from large and loads the original when zoomed in.
+  The warm-up downloads medium photos.
+- **First question sooner**: when building a deck from a list, the first species found is added
+  straight away. Simulated at iNat's real speed: first question 21 s → 7 s.
+- **Live checks**: `pytest -m live` runs a few tests against the real iNaturalist (skipped normally).
+- Background jobs always find their handlers (fixes a warm-up that could fail as "Unknown job kind").
 - Browser tests are skipped (not errors) when Playwright is blocked, e.g. by a work laptop's
   Application Control policy. Playwright moved out of `requirements-dev.txt` into optional `requirements-ui.txt`.
+- Hide the harmless httpx/Starlette deprecation warning (`pytest.ini`).
 
 ## 0.3.0 (2026-11-27) - speed, big decks, editing, stats, zoom, polish
 

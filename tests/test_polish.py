@@ -42,4 +42,4 @@ def test_unfinished_jobs_marked_interrupted_on_restart(fake):
 def test_info_endpoint(fake):
     with TestClient(app) as c:
         info = c.get("/api/info").json()
-    assert info["version"] == "0.3.0" and "image_cache_mb" in info
+    assert info["version"] == "0.3.1" and "image_cache_mb" in info
