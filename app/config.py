@@ -6,6 +6,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("INAT_QUIZ_DATA_DIR", ROOT_DIR / "data"))
 DB_PATH = Path(os.environ.get("INAT_QUIZ_DB", DATA_DIR / "inat_quiz.db"))
 STATIC_DIR = ROOT_DIR / "static"
+WEB_DIR = ROOT_DIR / "web"            # the website version (static site)
 
 INAT_API_BASE = "https://api.inaturalist.org/v1"
 # iNaturalist asks API users to stay at or below ~1 request per second.

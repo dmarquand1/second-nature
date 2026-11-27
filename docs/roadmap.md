@@ -10,8 +10,10 @@
 | 6 | FSRS spaced repetition (due cards, daily review queue) | Done (0.2.0) |
 | 7 | Stats: accuracy per species, confusion pairs, progress over time | Done (0.3.0) |
 | 8 | Polish: keyboard shortcuts, attribution and licences, offline image cache | Done (0.3.0) |
+| 9 | Website version: runs in the browser, free hosting on GitHub Pages, backup/restore | Done (0.4.0) |
 
-Next ideas: hosting it online, accounts, a mobile-first layout (from the original plan).
+Next ideas: sign-in so progress follows you between computers (needs a small server for
+accounts and answers only), a mobile-first layout.
 
 Ideas for later: optimise the FSRS parameters from your own review history, hide the place name until reveal (harder mode), choose
 photo pool by season, typed answers, sound recordings.

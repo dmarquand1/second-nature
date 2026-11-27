@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0 (2026-11-27) - website version
+
+- **New name: Second Nature** ("learn to identify species until it's second nature"), replacing "iNat Quiz" so the
+  name doesn't use iNaturalist's trademark. Saved progress, backups and the project folder name are unchanged.
+- **Runs as a website**: `web/index.html` + `static/` work on any static web host with no Python server.
+  The backend is translated to JavaScript in `static/local/` (same rules as `app/`); the screens are shared
+  and `static/api.js` sends their requests to `static/local/router.js` in the website version.
+- **Each player's browser talks to iNaturalist directly**: 1 request per second per browser, quiz first,
+  IndexedDB cache with the same freshness times, one request for duplicate lookups, old copy when offline.
+- **Photos straight from iNaturalist** (not copied). The website shows open-licence photos only (`photo_license`
+  filter plus a check per photo).
+- **Compliance** (docs/13-compliance.md): photographer and licence shown under every photo and in the zoom viewer
+  (both versions); daily request budget per browser (background pauses at 7,000, all at 9,000); OpenStreetMap tiles
+  from the exact address with a linked credit; "not endorsed by iNaturalist" and a privacy section listing the
+  services the browser connects to (no accounts, cookies or tracking).
+- **Progress kept in the browser**, with **Settings**: download a backup, restore it (also to move between
+  computers), privacy, requests today, storage used, delete everything.
+- **Try it locally** at `http://127.0.0.1:8000/play/`; **publish on GitHub Pages** with
+  `.github/workflows/pages.yml` (see docs/12-website.md).
+- **Tests**: `web/tests.html` runs 22 JavaScript tests in any browser (also `?live` for 4 real-iNaturalist
+  checks); `tests/test_web.py` runs them and a click-through automatically when Playwright is available.
+  Version numbers are checked to match everywhere.
+
 ## 0.3.1 (2026-11-27) - speed-ups
 
 - **Batched lookups**: taxonomy for 30 species per request (`taxa.ensure_details_many`), photos for

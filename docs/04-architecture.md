@@ -83,3 +83,12 @@ Plain HTML/CSS/JS, no build step. `app.js` is a tiny hash router
 is the zoomable photo viewer, `shortcuts.js` the `?` help. Each page checks
 `stillHere()` after loading data, so a slow response never draws over the page
 you've moved to.
+
+## Website version (0.4)
+
+The same screens also run without the Python server. `web/index.html` loads
+`static/local/*.js`, a JavaScript translation of the `app/` modules that keeps
+its data in the browser (IndexedDB) and calls iNaturalist straight from the
+browser. `api.request()` in `static/api.js` sends each `/api/...` request to
+`IQ.router.handle()` when that exists, so the views don't know which version
+they're in. Details: [12 The website version](12-website.md).

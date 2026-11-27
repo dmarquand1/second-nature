@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Second Nature tests</title>
+  <style>
+    :root { --bg: #fbfaf6; --fg: #222; --ok: #2e7d32; --bad: #c62828; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1b1d1a; --fg: #e8e8e2; --ok: #81c784; --bad: #ef9a9a; } }
+    body { font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg); max-width: 900px; margin: 2rem auto; padding: 0 16px; }
+    .pass { color: var(--ok); } .fail { color: var(--bad); }
+    ul { list-style: none; padding: 0; } #summary { font-weight: 600; font-size: 1.2rem; }
+  </style>
+</head>
+<!-- Tests for the website version. They use a pretend iNaturalist and their own
+     storage, so they never touch the real API or your progress. -->
+<body>
+  <h1>Second Nature: website version tests</h1>
+  <p id="summary">Running…</p>
+  <ul id="results"></ul>
+  <script src="static/local/config.js"></script>
+  <script>IQ.config.DB_NAME = "inat-quiz-tests"; IQ.config.SETTINGS_PREFIX = "iq-tests.";</script>
+  <script src="static/local/store.js"></script>
+  <script src="static/local/inat.js"></script>
+  <script src="static/local/fsrs.js"></script>
+  <script src="static/local/scheduler.js"></script>
+  <script src="static/local/taxa.js"></script>
+  <script src="static/local/jobs.js"></script>
+  <script src="static/local/decks.js"></script>
+  <script src="static/local/distractors.js"></script>
+  <script src="static/local/quiz.js"></script>
+  <script src="static/local/warmup.js"></script>
+  <script src="static/local/stats.js"></script>
+  <script src="static/local/router.js"></script>
+  <script src="tests/fake-inat.js"></script>
+  <script src="tests/tests.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const live = params.has("live");      // tests.html?live checks the real iNaturalist instead
+    if (!live) IQ.inat.setFetcher(FakeInat.fetcher);
+    else document.querySelector("h1").textContent += " (live, real iNaturalist: takes about a minute)";
+    IQ.warmup.noPreload = true;
+    T.run(params.get("only"), live);
+  </script>
+</body>
+</html>

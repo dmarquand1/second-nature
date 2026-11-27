@@ -186,7 +186,9 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
         # Photos come through the local offline cache. Attribution is shown on reveal.
         # Medium photos (~3x smaller) appear first; the page swaps in the large one when it
         # has loaded, and the viewer loads the original when you zoom in.
-        "photos": [photo_sizes(p["url"]) for p in photos],
+        # Photographer and licence go with each photo (shown under it), as the licences require.
+        "photos": [{**photo_sizes(p["url"]), "attribution": p.get("attribution"), **licence_info(p.get("license"))}
+                   for p in photos],
         "location": {
             "lat": obs["latitude"], "lng": obs["longitude"],
             "obscured": bool(obs["obscured"]), "accuracy_m": obs["positional_accuracy"],

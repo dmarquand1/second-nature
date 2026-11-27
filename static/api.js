@@ -1,6 +1,9 @@
 // Tiny wrappers around fetch() for the backend JSON API, plus shared helpers.
+// In the website version (web/index.html) there is no server: the same requests
+// are answered inside the browser by static/local/router.js.
 const api = {
   async request(method, url, body) {
+    if (window.IQ && IQ.router) return IQ.router.handle(method, url, body);
     const opts = { method, headers: {} };
     if (body !== undefined) {
       opts.headers["Content-Type"] = "application/json";

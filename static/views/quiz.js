@@ -99,6 +99,7 @@ function QuizView(deckId) {
       <section class="photos">
         <div class="main-photo" title="Click to zoom (Z)"><img id="main-img" src="${esc(q.photos[0].url)}" alt="Mystery organism">
           <button class="zoom-btn" id="zoom-btn" title="Zoom (Z)">⤢ Zoom</button></div>
+        <p class="photo-credit muted small" id="photo-credit"></p>
         ${q.photos.length > 1 ? `<div class="thumbs">${q.photos.map((p, i) =>
           `<img src="${esc(p.url)}" data-i="${i}" class="${i === 0 ? "active" : ""}" alt="Photo ${i + 1}">`).join("")}</div>` : ""}
       </section>
@@ -130,6 +131,8 @@ function QuizView(deckId) {
     const q = current, p = q.photos[i];
     const img = document.getElementById("main-img");
     img.src = p.url;
+    const credit = document.getElementById("photo-credit");
+    if (credit) credit.innerHTML = photoCredit(p);
     if (!p.large || p.large === p.url) return;
     const big = new Image();
     big.onload = () => { if (current === q && photoIndex === i) img.src = p.large; };
@@ -146,7 +149,8 @@ function QuizView(deckId) {
 
   function openZoom() {
     if (!current || current.done) return;
-    Viewer.open(current.photos.map((p) => ({ url: p.large || p.url, original: p.original })), photoIndex, (i) => setPhoto(i));
+    Viewer.open(current.photos.map((p) => ({ url: p.large || p.url, original: p.original, credit: photoCredit(p) })),
+                photoIndex, (i) => setPhoto(i));
   }
 
   function showDone(c) {
@@ -173,8 +177,9 @@ function QuizView(deckId) {
     const el = document.getElementById("map");
     if (loc.lat == null || typeof L === "undefined") { el.innerHTML = `<p class="muted small">No location</p>`; return; }
     map = L.map(el, { zoomControl: true, attributionControl: true }).setView([loc.lat, loc.lng], loc.obscured ? 7 : 6);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18, attribution: "&copy; OpenStreetMap contributors",
+    // OpenStreetMap tile policy: this exact address, and the credit must stay visible.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
     }).addTo(map);
     const radius = loc.obscured ? 15000 : Math.max(loc.accuracy_m || 0, 500);
     L.circle([loc.lat, loc.lng], { radius, color: "#74ac00" }).addTo(map);
@@ -260,6 +265,16 @@ function QuizView(deckId) {
 
   api.post(`/api/decks/${deckId}/warmup`).then(watchWarmup, () => {});
   show(loadQuestion());
+}
+
+// Credit shown under the photo while you answer: photographer and licence (the link to the
+// observation comes after you answer, because it would give the species away).
+function photoCredit(p) {
+  if (!p.attribution && !p.license_name) return "";
+  const lic = p.license_url
+    ? `<a href="${esc(p.license_url)}" target="_blank" rel="noopener">${esc(p.license_name)}</a>`
+    : esc(p.license_name || "");
+  return `Photo: ${esc(p.attribution || "Unknown photographer")}${lic ? ` · ${lic}` : ""} · via iNaturalist`;
 }
 
 // "(c) Jane Doe, some rights reserved (CC BY-NC)" with the licence linked, once per photographer/licence.

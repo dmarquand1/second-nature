@@ -42,4 +42,27 @@ def test_unfinished_jobs_marked_interrupted_on_restart(fake):
 def test_info_endpoint(fake):
     with TestClient(app) as c:
         info = c.get("/api/info").json()
-    assert info["version"] == "0.3.1" and "image_cache_mb" in info
+    from app.main import __version__
+    assert info["version"] == __version__ and "image_cache_mb" in info
+
+
+def test_versions_match():
+    """The app, the website version and the ?v= on scripts (which makes browsers
+    load new files after an update) should all carry the same version number."""
+    from app import config
+    from app.main import __version__
+    assert f'IQ.VERSION = "{__version__}"' in (config.STATIC_DIR / "local" / "router.js").read_text()
+    for page in (config.STATIC_DIR / "index.html", config.WEB_DIR / "index.html"):
+        text = page.read_text()
+        assert f"?v={__version__}" in text and "?v=0.3" not in text, page
+
+
+def test_website_pages_are_served(fake):
+    """The website version preview at /play/ (see docs/12-website.md)."""
+    with TestClient(app) as c:
+        r = c.get("/play/")
+        assert r.status_code == 200 and "static/local/router.js" in r.text
+        assert c.get("/play/static/local/store.js").status_code == 200
+        assert c.get("/play/tests.html").status_code == 200
+        assert c.get("/play/tests/tests.js").status_code == 200
+        assert c.get("/play", follow_redirects=False).status_code in (302, 307)

@@ -1,4 +1,6 @@
-# iNat Quiz
+# Second Nature
+
+*Learn to identify species until it's second nature.*
 
 A personal species-identification practice tool. It shows you research-grade
 photos from [iNaturalist](https://www.inaturalist.org), with a map and date,
@@ -9,8 +11,14 @@ iNaturalist, and related species found nearby).
 Inspired by [iNatGuessr](https://simonrolph.github.io/iNatGuessr/) and
 [identifi.life](https://identifi.life/).
 
-Runs locally on your own computer: Python (FastAPI) backend, SQLite database,
-plain HTML/JS frontend.
+Two ways to use it:
+
+* **Local app** on your own computer: Python (FastAPI) backend, SQLite database,
+  plain HTML/JS frontend. Start it with `python run.py`.
+* **Website** (from version 0.4): the same screens running entirely in the
+  browser, publishable for free on GitHub Pages. Try it at
+  `http://127.0.0.1:8000/play/` while the local app runs. See
+  [docs/12-website.md](docs/12-website.md).
 
 ## Quick start (Windows, Git Bash)
 
@@ -26,7 +34,7 @@ python run.py                    # start the app; your browser opens http://127.
 
 Press `Ctrl+C` in the terminal to stop it.
 
-## Features (version 0.3)
+## Features (version 0.4)
 
 - **Decks** built three ways: paste or upload a species list, pick a group (e.g.
   genus *Turdus*, order Odonata), or take the most-observed species in a place.
@@ -51,7 +59,11 @@ Press `Ctrl+C` in the terminal to stop it.
   deck, a daily new-species limit, and Again / Hard / Good / Easy buttons
   after each answer showing when you'd see it next.
 - **Polite to iNaturalist**: max 1 request per second, every response cached
-  locally in SQLite.
+  locally in SQLite (or in the browser, for the website).
+- **Website version**: no server or account needed; each player's browser
+  talks to iNaturalist directly, photos load from iNaturalist (open licences by
+  only), progress stays in the browser with backup and restore.
+  See [docs/13-compliance.md](docs/13-compliance.md) before publishing.
 
 ## Project layout
 
@@ -79,7 +91,10 @@ inat-quiz/
 │   ├── app.js            page router
 │   ├── viewer.js         full-screen photo zoom
 │   ├── shortcuts.js      keyboard shortcuts help (?)
-│   └── views/            one file per screen (decks, new, deck, edit, quiz, stats)
+│   ├── views/            one file per screen (decks, new, deck, edit, quiz, stats, settings)
+│   └── local/            the website version's "backend" in JavaScript (runs in the browser)
+├── web/                  the website version: index.html, tests.html, tests/
+├── .github/workflows/    pages.yml publishes the website on GitHub Pages
 ├── tests/                pytest tests (use a fake iNaturalist, run offline)
 ├── docs/                 step-by-step documentation
 ├── data/                 your local database (not committed to git)
@@ -103,6 +118,8 @@ inat-quiz/
 | [09 Decks: big lists and editing](docs/09-decks.md) | Building big decks, file upload, the edit page |
 | [10 Stats](docs/10-stats.md) | What each number and chart on the Stats page means |
 | [11 Testing](docs/11-testing.md) | Running the tests, including the browser tests |
+| [12 The website version](docs/12-website.md) | How it works, trying it locally, publishing on GitHub Pages |
+| [13 Putting it online responsibly](docs/13-compliance.md) | iNaturalist, photo licence, map and privacy rules, and what to decide before publishing |
 | [Roadmap](docs/roadmap.md) | What's done and what's next |
 | [Requested changes](docs/requested-changes.md) | Wish list of changes and their status |
 | [Changelog](CHANGELOG.md) | What changed in each version |

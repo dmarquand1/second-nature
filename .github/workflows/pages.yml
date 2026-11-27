@@ -1,0 +1,46 @@
+# Publishes the website version (web/index.html + static/) to GitHub Pages
+# every time you push changes to the main branch. See docs/12-website.md.
+#
+# One-time setup on GitHub: Settings > Pages > Build and deployment >
+# Source: "GitHub Actions".
+name: Publish website
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "static/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put the website together
+        run: |
+          mkdir _site
+          cp web/index.html web/tests.html _site/
+          cp -r web/tests _site/tests
+          cp -r static _site/static
+          rm _site/static/index.html      # that page is for the local app only
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -47,6 +47,24 @@ pytest tests/test_ui.py
 are simply **skipped**; everything else still runs. To remove Playwright again:
 `pip uninstall playwright`.
 
+## Website version tests (no install needed)
+
+The website version (see [12 The website version](12-website.md)) has its own
+tests in JavaScript. They run in **your normal browser**, so they work on the
+work laptop too:
+
+1. Start the app: `python run.py`
+2. Open **http://127.0.0.1:8000/play/tests.html**. About 20 tests run in a
+   couple of seconds; all lines should be green with a 🎉 at the top.
+3. Optional: **http://127.0.0.1:8000/play/tests.html?live** runs 4 checks
+   against the real iNaturalist (search, open-licence photos, look-alikes, a
+   real question). About a minute.
+
+They use a pretend iNaturalist and their own browser storage, so they never
+touch your progress. `tests/test_web.py` runs the same page automatically when
+Playwright is available (skipped otherwise), plus a click-through of the
+website screens.
+
 ## What is covered
 
 | File | Covers |
@@ -64,7 +82,8 @@ are simply **skipped**; everything else still runs. To remove Playwright again:
 | `test_live.py` | **Real iNaturalist** (only with `pytest -m live`) |
 | `test_images.py` | Photo cache: allowed hosts only, download once, trimming, local URLs |
 | `test_stats.py` | Totals, streak, daily, states, forecast, struggles, mix-ups, per deck; mix-ups feeding the look-alikes |
-| `test_polish.py` | Licences, cache URLs, interrupted jobs after restart, version info |
+| `test_polish.py` | Licences, cache URLs, interrupted jobs after restart, version info (same everywhere), `/play/` pages served |
+| `test_web.py` + `web/tests/tests.js` | **Website version**: FSRS gives the same numbers as Python, name cleaning, list/taxon decks with report, edit and delete, questions with photos straight from iNaturalist, look-alikes, answer and re-rate rules, daily limit and practice, prepared-ahead questions differ, batched warm-up, cache (repeats, two at once, offline fallback), quiz requests first, open-licence filter and credit with each photo, daily request budget, stats, backup and restore; click-through with backup download |
 | `test_ui.py` | Browser: build progress and report, deck search, quiz "next" is instant, zoom (and keys don't leak to the quiz), edit page, stats page, `?` help |
 
 ## In VS Code

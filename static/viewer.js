@@ -23,6 +23,7 @@ const Viewer = (() => {
         <button data-act="in" title="Zoom in (+)">+</button>
         <button data-act="reset" title="Reset (0)">Fit</button>
         <button data-act="close" title="Close (Esc)">✕</button>
+        <span class="viewer-credit small"></span>
       </div>`;
     document.body.appendChild(el);
     img = el.querySelector("img");
@@ -129,6 +130,7 @@ const Viewer = (() => {
     index = (i + photos.length) % photos.length;
     img.src = photos[index].url;
     el.querySelector(".viewer-count").textContent = `${index + 1} / ${photos.length}`;
+    el.querySelector(".viewer-credit").innerHTML = photos[index].credit || "";
     el.querySelectorAll("[data-act=prev],[data-act=next]").forEach((b) => (b.style.visibility = photos.length > 1 ? "" : "hidden"));
     reset();
   }

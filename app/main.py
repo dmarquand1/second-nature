@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,7 @@ from . import config, decks, images, jobs, quiz, stats, warmup
 from .db import init_db
 from .inat_client import InatError, get_client
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 
 @asynccontextmanager
@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="iNat Quiz", version=__version__, lifespan=lifespan)
+app = FastAPI(title="Second Nature", version=__version__, lifespan=lifespan)
 
 
 # ---- request bodies -------------------------------------------------------
@@ -222,6 +222,29 @@ def info():
 
 # ---- frontend -------------------------------------------------------------
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
+
+# Preview of the website version (runs fully in the browser, see docs/12-website.md):
+# http://127.0.0.1:8000/play/  serves web/index.html with the same static files.
+app.mount("/play/static", StaticFiles(directory=config.STATIC_DIR), name="play-static")
+
+
+@app.get("/play")
+def play_redirect():
+    return RedirectResponse("/play/")
+
+
+@app.get("/play/")
+def play():
+    return FileResponse(config.WEB_DIR / "index.html")
+
+
+app.mount("/play/tests", StaticFiles(directory=config.WEB_DIR / "tests"), name="play-tests")
+
+
+@app.get("/play/tests.html")
+def play_tests():
+    """Tests for the website version, run in your own browser (see docs/11-testing.md)."""
+    return FileResponse(config.WEB_DIR / "tests.html")
 
 
 @app.get("/")

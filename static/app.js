@@ -1,4 +1,4 @@
-// Hash router: #/  #/new  #/deck/3  #/deck/3/edit  #/quiz/3  #/stats  #/stats/3
+// Hash router: #/  #/new  #/deck/3  #/deck/3/edit  #/quiz/3  #/stats  #/stats/3  #/settings
 const routes = [
   [/^#?\/?$/, () => DecksView()],
   [/^#\/new$/, () => NewDeckView()],
@@ -6,6 +6,8 @@ const routes = [
   [/^#\/deck\/(\d+)\/edit$/, (m) => EditDeckView(+m[1])],
   [/^#\/quiz\/(\d+)$/, (m) => QuizView(+m[1])],
   [/^#\/stats(?:\/(\d+))?$/, (m) => StatsView(m[1] ? +m[1] : null)],
+  // Website version only (web/index.html loads views/settings.js).
+  [/^#\/settings$/, () => (typeof SettingsView === "function" ? SettingsView() : DecksView())],
 ];
 
 // Each page visit gets a number, so a page whose data arrives after you've

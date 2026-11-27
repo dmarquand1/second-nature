@@ -1,6 +1,6 @@
 # Requested changes
 
-Dan's wish list. Each item moves to the CHANGELOG when it ships.
+Wish list. Each item moves to the CHANGELOG when it ships.
 Status: **Planned** (agreed, not started), **In progress**, **Done (version)**.
 
 ## Shipped in v0.3
@@ -82,6 +82,21 @@ sooner on a new deck, optional live iNaturalist checks. See [08](08-speed-and-of
 
 Browser tests are skipped instead of erroring when Playwright is blocked.
 
+## Shipped in v0.4.0
+
+### 10. A website version
+*Requested 2026-11-27.* Status: **Done (0.4.0)**. See [12 The website version](12-website.md).
+
+Runs entirely in the browser: each player's browser talks to iNaturalist
+directly, progress is kept in the browser with backup/restore, free hosting on
+GitHub Pages. The local app keeps working.
+
+### 11. Photo licences
+*Discussed 2026-11-27.* Status: **Done (0.4.0)**.
+
+The website version doesn't copy photos (they load from iNaturalist) and uses
+open-licence photos only by default, switchable in Settings.
+
 ## Open
 
 Nothing yet. Add new requests here.
@@ -90,6 +105,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Website version (browser only, GitHub Pages, backup, open-licence photos) | 0.4.0 |
 | Batched lookups, medium photos first, live checks, skip blocked browser tests | 0.3.1 |
 | Faster loading, offline photos, big lists, edit deck, stats, zoom, polish, tests | 0.3.0 |
 | FSRS spaced repetition | 0.2.0 |
