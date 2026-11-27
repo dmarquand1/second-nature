@@ -7,8 +7,10 @@
 import json
 import time
 
+from . import config
 from .db import get_conn
 from .inat_client import get_client
+from .scheduler import queue_counts
 from .taxa import upsert_taxon
 
 
@@ -83,7 +85,7 @@ def _add_taxa(conn, deck_id: int, taxa: list[dict]) -> int:
 
 
 def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
-                description: str | None = None) -> dict:
+                description: str | None = None, new_per_day: int = config.DEFAULT_NEW_PER_DAY) -> dict:
     taxa, missing = _species_from_source(source_type, params)
     if len(taxa) < 1:
         raise DeckError("No species found for that selection.")
@@ -91,10 +93,10 @@ def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO decks (name, description, source_type, source_params, place_id, place_name,
-                                  num_choices, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                                  num_choices, new_per_day, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (name.strip() or "Untitled deck", description, source_type, json.dumps(params),
-             params.get("place_id"), params.get("place_name"), num_choices, time.time()),
+             params.get("place_id"), params.get("place_name"), num_choices, int(new_per_day), time.time()),
         )
         deck_id = cur.lastrowid
         _add_taxa(conn, deck_id, taxa)
@@ -115,6 +117,17 @@ def remove_card(deck_id: int, taxon_id: int) -> None:
         conn.execute("DELETE FROM cards WHERE deck_id = ? AND taxon_id = ?", (deck_id, taxon_id))
 
 
+def update_settings(deck_id: int, name: str | None = None, num_choices: int | None = None,
+                    new_per_day: int | None = None) -> None:
+    with get_conn() as conn:
+        if name is not None and name.strip():
+            conn.execute("UPDATE decks SET name = ? WHERE id = ?", (name.strip(), deck_id))
+        if num_choices is not None:
+            conn.execute("UPDATE decks SET num_choices = ? WHERE id = ?", (max(4, min(num_choices, 6)), deck_id))
+        if new_per_day is not None:
+            conn.execute("UPDATE decks SET new_per_day = ? WHERE id = ?", (max(0, new_per_day), deck_id))
+
+
 def delete_deck(deck_id: int) -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM decks WHERE id = ?", (deck_id,))
@@ -130,6 +143,7 @@ def _deck_summary(conn, row) -> dict:
     d["num_cards"] = conn.execute("SELECT COUNT(*) FROM cards WHERE deck_id = ?", (d["id"],)).fetchone()[0]
     d["num_reviews"] = stats["n"]
     d["accuracy"] = round(stats["right"] / stats["n"], 3) if stats["n"] else None
+    d["queue"] = queue_counts(conn, d["id"])
     return d
 
 
@@ -146,7 +160,8 @@ def get_deck(deck_id: int) -> dict | None:
             return None
         d = _deck_summary(conn, row)
         cards = conn.execute(
-            """SELECT c.id AS card_id, c.reps, c.lapses, c.state, c.last_review, t.*,
+            """SELECT c.id AS card_id, c.reps, c.lapses, c.state AS card_state, c.due, c.stability,
+                      c.last_review, t.*,
                       (SELECT COUNT(*) FROM reviews r WHERE r.card_id = c.id) AS seen,
                       (SELECT COALESCE(SUM(correct),0) FROM reviews r WHERE r.card_id = c.id) AS right
                FROM cards c JOIN taxa t ON t.id = c.taxon_id
@@ -158,6 +173,7 @@ def get_deck(deck_id: int) -> dict | None:
                 "card_id": c["card_id"], "taxon_id": c["id"], "name": c["name"],
                 "common_name": c["common_name"], "photo_url": c["photo_url"],
                 "seen": c["seen"], "right": c["right"],
+                "state": c["card_state"], "due": c["due"], "stability": c["stability"],
             }
             for c in cards
         ]

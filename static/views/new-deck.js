@@ -39,6 +39,9 @@ function NewDeckView() {
         <label data-for="taxon place">Number of species
           <input type="number" name="limit" value="30" min="2" max="200">
         </label>
+        <label>New species per day
+          <input type="number" name="new_per_day" value="20" min="0" max="500">
+        </label>
         <label>Choices per question
           <select name="num_choices"><option>4</option><option selected>5</option><option>6</option></select>
         </label>
@@ -89,6 +92,7 @@ function NewDeckView() {
       source_type: type,
       limit: +form.limit.value,
       num_choices: +form.num_choices.value,
+      new_per_day: +form.new_per_day.value,
     };
     if (type === "list") body.species = form.species.value.split("\n").map((s) => s.trim()).filter(Boolean);
     if (taxon && type !== "list") { body.taxon_id = taxon.id; body.taxon_name = taxon.common_name || taxon.name; }

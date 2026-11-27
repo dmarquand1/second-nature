@@ -7,7 +7,9 @@ from . import config
 from .db import get_conn
 from .distractors import pick_distractors
 from .inat_client import get_client
-from .scheduler import apply_rating, pick_next_card, rating_from_answer
+from .fsrs import CardState
+from .scheduler import (apply_rating, fsrs, pick_next_card, queue_counts, rating_from_answer,
+                        restore_state, save_state, state_json, to_state)
 from .taxa import get_taxon, public
 
 
@@ -84,15 +86,19 @@ def _choose_observation(taxon_id: int, place_id: int | None, rng: random.Random)
     return dict(pick)
 
 
-def next_question(deck_id: int, rng: random.Random | None = None) -> dict:
+def next_question(deck_id: int, rng: random.Random | None = None, practice: bool = False) -> dict:
     rng = rng or random.Random()
     with get_conn() as conn:
         deck = conn.execute("SELECT * FROM decks WHERE id = ?", (deck_id,)).fetchone()
         if not deck:
             raise QuizError("Deck not found.")
-        card = pick_next_card(conn, deck_id, rng)
+        if not conn.execute("SELECT 1 FROM cards WHERE deck_id = ?", (deck_id,)).fetchone():
+            raise QuizError("This deck has no species yet.")
+        card = pick_next_card(conn, deck_id, rng, practice=practice)
+        counts = queue_counts(conn, deck_id)
     if not card:
-        raise QuizError("This deck has no species yet.")
+        # Nothing due and no new cards left today.
+        return {"done": True, "counts": counts}
 
     obs = _choose_observation(card["taxon_id"], deck["place_id"], rng)
     n_wrong = deck["num_choices"] - 1
@@ -126,6 +132,8 @@ def next_question(deck_id: int, rng: random.Random | None = None) -> dict:
         },
         "observed_on": obs["observed_on"],
         "choices": choices,
+        "is_new": card["state"] == 0,
+        "counts": counts,
     }
 
 
@@ -139,19 +147,24 @@ def answer_question(question_id: int, chosen_taxon_id: int, response_ms: int | N
         correct = int(chosen_taxon_id) == card["taxon_id"]
         if not q["answered"]:
             rating = rating_from_answer(correct, response_ms)
+            before, after = apply_rating(conn, card, rating)
             conn.execute(
                 """INSERT INTO reviews (question_id, deck_id, card_id, taxon_id, observation_id, chosen_taxon_id,
-                                        correct, rating, response_ms, choices, reviewed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                        correct, rating, response_ms, choices, reviewed_at, card_before, card_after)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (question_id, q["deck_id"], card["id"], card["taxon_id"], obs["id"], chosen_taxon_id,
-                 int(correct), rating, response_ms, q["choices"], time.time()),
+                 int(correct), rating, response_ms, q["choices"], time.time(), before, after),
             )
             conn.execute("UPDATE questions SET answered = 1 WHERE id = ?", (question_id,))
-            apply_rating(conn, card, rating)
+        review = conn.execute("SELECT * FROM reviews WHERE question_id = ?", (question_id,)).fetchone()
+        correct = bool(review["correct"])
+        intervals = rating_previews(review["card_before"], review["reviewed_at"])
         answer = get_taxon(conn, card["taxon_id"])
         chosen = get_taxon(conn, int(chosen_taxon_id))
     return {
         "correct": correct,
+        "rating": review["rating"],
+        "intervals": intervals,      # e.g. {"1": "1 min", "3": "3 days"}
         "answer": public(answer),
         "chosen": public(chosen) if chosen else None,
         "observation": {
@@ -160,3 +173,53 @@ def answer_question(question_id: int, chosen_taxon_id: int, response_ms: int | N
             "photos": json.loads(obs["photos"])[: config.MAX_PHOTOS_PER_QUESTION],
         },
     }
+
+
+def _fmt_seconds(sec: float) -> str:
+    if sec < 3600:
+        return f"{max(1, round(sec / 60))} min"
+    if sec < 86400:
+        return f"{round(sec / 3600)} h"
+    days = sec / 86400
+    if days < 31:
+        return f"{round(days)} day" + ("s" if round(days) != 1 else "")
+    if days < 365:
+        return f"{days / 30.4:.1f} months"
+    return f"{days / 365:.1f} years"
+
+
+def rating_previews(before_json: str, reviewed_at: float) -> dict:
+    """How long until the card comes back for each possible rating."""
+    if not before_json:   # answered before version 0.2
+        return {}
+    before = CardState(**json.loads(before_json))
+    return {
+        str(r): _fmt_seconds(fsrs.review(before, r, reviewed_at).due - reviewed_at)
+        for r in (1, 2, 3, 4)
+    }
+
+
+def rate_question(question_id: int, rating: int) -> dict:
+    """Change the rating of an answered question (e.g. you guessed, so mark it Hard).
+    The card is reset to how it was before the answer and FSRS is re-run."""
+    if rating not in (1, 2, 3, 4):
+        raise QuizError("Rating must be 1 (Again), 2 (Hard), 3 (Good) or 4 (Easy).")
+    with get_conn() as conn:
+        review = conn.execute("SELECT * FROM reviews WHERE question_id = ?", (question_id,)).fetchone()
+        if not review:
+            raise QuizError("Answer the question first.")
+        if not review["card_before"]:
+            raise QuizError("This answer was given before spaced repetition was added.")
+        if not review["correct"] and rating != 1:
+            raise QuizError("A wrong answer is always rated Again.")
+        later = conn.execute("SELECT 1 FROM reviews WHERE card_id = ? AND id > ?",
+                             (review["card_id"], review["id"])).fetchone()
+        if later:
+            raise QuizError("This species has been reviewed again since, so this rating can't change.")
+        restored = restore_state(conn, review["card_id"], review["card_before"])
+        card = dict(conn.execute("SELECT * FROM cards WHERE id = ?", (review["card_id"],)).fetchone())
+        after = fsrs.review(to_state(card), rating, review["reviewed_at"])
+        save_state(conn, card["id"], after)
+        conn.execute("UPDATE reviews SET rating = ?, card_after = ? WHERE id = ?",
+                     (rating, state_json(after), review["id"]))
+    return {"rating": rating, "due": after.due, "state": after.state, "previous_state": restored.state}

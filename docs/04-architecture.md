@@ -17,15 +17,18 @@
 ## Request flow for one question
 
 1. `GET /api/decks/{id}/next`
-2. `scheduler.pick_next_card` chooses a species (card) from the deck.
+2. `scheduler.pick_next_card` chooses a species (card): due cards, then new ones (daily limit), see [07](07-spaced-repetition.md).
 3. `quiz._choose_observation` takes a research-grade observation of it from the
    local pool, fetching up to 50 from iNaturalist the first time (place-focused
    if the deck has a place, worldwide otherwise). Least-shown photos come first.
 4. `distractors.pick_distractors` picks 3-5 hard wrong answers (see [06](06-distractors.md)).
 5. The question is saved in `questions` and returned **without the answer**.
 6. `POST /api/questions/{qid}/answer` checks it, writes a `reviews` row,
-   updates the card via `scheduler.apply_rating`, and returns the answer,
-   the observation link and the photo attributions.
+   runs FSRS on the card with a suggested rating (`scheduler.apply_rating`),
+   and returns the answer, the observation link, photo attributions and the
+   next interval for each rating.
+7. If you pick a different rating, `POST /api/questions/{qid}/rate` resets the
+   card to how it was and re-runs FSRS with your rating.
 
 The frontend starts loading the next question while you read the answer,
 so the wait is mostly hidden.
@@ -42,8 +45,10 @@ so the wait is mostly hidden.
 | DELETE | `/api/decks/{id}` | Delete a deck and its history |
 | POST | `/api/decks/{id}/species` | Add species by name |
 | DELETE | `/api/decks/{id}/species/{taxon_id}` | Remove a species |
-| GET | `/api/decks/{id}/next` | Next question |
-| POST | `/api/questions/{id}/answer` | Answer (`taxon_id`, `response_ms`) |
+| PATCH | `/api/decks/{id}` | Change name, `new_per_day`, `num_choices` |
+| GET | `/api/decks/{id}/next` | Next question, or `{"done": true}` when nothing is due (`?practice=true` keeps going) |
+| POST | `/api/questions/{id}/answer` | Answer (`taxon_id`, `response_ms`); returns suggested rating and intervals |
+| POST | `/api/questions/{id}/rate` | Change the rating (`rating` 1-4) |
 
 Interactive API docs are at <http://127.0.0.1:8000/docs> while the app runs.
 

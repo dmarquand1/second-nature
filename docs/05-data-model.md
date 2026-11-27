@@ -6,23 +6,33 @@ SQLite file: `data/inat_quiz.db` (created automatically). Schema: `app/db.py`.
 |---|---|---|
 | `api_cache` | iNat API response | `cache_key` (path + params), `response` JSON, `fetched_at` |
 | `taxa` | species we've seen | names, photo, `genus_id`, `family_id`, `order_id` |
-| `decks` | deck | `source_type`, `source_params` JSON, `place_id`, `num_choices` |
+| `decks` | deck | `source_type`, `source_params` JSON, `place_id`, `num_choices`, `new_per_day` |
 | `cards` | species in a deck | `deck_id`, `taxon_id`, **FSRS state columns** |
 | `observations` | iNat observation in the photo pool | `photos` JSON (url, attribution, licence), lat/lng, date, `times_shown` |
 | `questions` | question shown | `card_id`, `observation_id`, `choices` JSON, `answered` |
-| `reviews` | answer given | `correct`, `rating` (1-4), `response_ms`, `chosen_taxon_id`, `reviewed_at` |
+| `reviews` | answer given | `correct`, `rating` (1-4), `response_ms`, `chosen_taxon_id`, `reviewed_at`, `card_before` / `card_after` (FSRS state JSON) |
 
-## Ready for FSRS (step 6)
+## FSRS state (step 6, done in 0.2.0)
 
-`cards` already has the fields FSRS needs:
-`state` (0 new, 1 learning, 2 review, 3 relearning), `due`, `stability`,
-`difficulty`, `elapsed_days`, `scheduled_days`, `reps`, `lapses`, `last_review`.
+`cards` holds each species' FSRS state:
+`state` (0 new, 1 learning, 2 review, 3 relearning), `due` (unix time),
+`stability` (days), `difficulty` (1-10), `elapsed_days`, `scheduled_days`,
+`reps`, `lapses`, `last_review`. See [07 Spaced repetition](07-spaced-repetition.md).
 
-Each answer is turned into an FSRS-style rating in
-`scheduler.rating_from_answer`: wrong = 1 Again, slow (>15 s) = 2 Hard,
-normal = 3 Good, fast (<4 s) = 4 Easy. Step 6 only needs to replace
-`pick_next_card` (choose due cards) and `apply_rating` (update FSRS state)
-in `app/scheduler.py`.
+Each `reviews` row stores the card's state before and after the answer, so
+a rating can be changed afterwards and the full history can later be used to
+tune FSRS to you.
+
+## Upgrading the database
+
+`app/db.py` has a `MIGRATIONS` list. On start, the app runs any upgrades
+your database hasn't had yet (tracked with SQLite's `PRAGMA user_version`),
+so you never need to delete `data/inat_quiz.db` when updating.
+
+| Version | Change |
+|---|---|
+| 1 | Original 0.1.0 tables |
+| 2 | `decks.new_per_day`, `reviews.card_before`/`card_after`; 0.1 cards reset to new |
 
 ## Ready for stats (step 7)
 

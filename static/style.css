@@ -104,3 +104,22 @@ kbd { font: 0.75rem ui-monospace, monospace; border: 1px solid var(--border); bo
   .quiz { grid-template-columns: 1fr; }
   .main-photo { height: 55vh; }
 }
+
+/* Spaced repetition (v0.2) */
+.pill { display: inline-block; font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.pill.due { border-color: var(--accent); color: var(--accent); }
+.pill.new { border-color: #3b82c4; color: #3b82c4; }
+.ratings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.rating { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.rating small { color: var(--muted); font-size: 0.75rem; }
+.rating:disabled { opacity: 0.35; cursor: not-allowed; }
+.rating.suggested { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; font-weight: 600; }
+.rating.r1:not(:disabled):hover { border-color: var(--wrong); }
+.rating.r4:not(:disabled):hover { border-color: var(--right); }
+.rate-help { margin-top: 8px; }
+.done { grid-column: 1 / -1; max-width: 640px; margin: 20px auto; text-align: center; }
+.done .row { justify-content: center; }
+.queue-line { margin: 4px 0; }
+.settings { margin-top: 10px; align-items: flex-end; }
+.settings label { display: flex; flex-direction: column; gap: 4px; }
+.settings input, .settings select { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }

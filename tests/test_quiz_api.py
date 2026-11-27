@@ -32,7 +32,8 @@ def test_no_repeat_species_in_a_row(fake):
                                        "species": ["Turdus merula", "Song Thrush"]}).json()
         last = None
         for _ in range(6):
-            q = c.get(f"/api/decks/{d['id']}/next").json()
+            # practice mode always has a card to show, so the rule is tested every round
+            q = c.get(f"/api/decks/{d['id']}/next?practice=true").json()
             r = c.post(f"/api/questions/{q['question_id']}/answer", json={"taxon_id": q["choices"][0]["id"]}).json()
             assert r["answer"]["id"] != last
             last = r["answer"]["id"]

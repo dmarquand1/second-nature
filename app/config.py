@@ -28,3 +28,8 @@ DEFAULT_NUM_CHOICES = 5          # allowed range 4-6
 MAX_PHOTOS_PER_QUESTION = 4
 OBSERVATIONS_PER_TAXON = 50      # size of the photo pool fetched per species
 NEARBY_RADIUS_KM = 100           # "co-occurring in the region" radius
+
+# Spaced repetition (FSRS)
+DESIRED_RETENTION = float(os.environ.get("INAT_QUIZ_RETENTION", "0.9"))  # 0.7-0.97
+DEFAULT_NEW_PER_DAY = 20         # new species introduced per deck per day
+DAY_STARTS_AT_HOUR = 4           # like Anki: a "day" runs 4am to 4am, local time

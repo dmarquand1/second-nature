@@ -26,7 +26,7 @@ python run.py                    # start the app; your browser opens http://127.
 
 Press `Ctrl+C` in the terminal to stop it.
 
-## Features (version 0.1)
+## Features (version 0.2)
 
 - **Decks** built three ways: paste a species list, pick a group (e.g. genus
   *Turdus*, order Odonata), or take the most-observed species in a place.
@@ -34,8 +34,12 @@ Press `Ctrl+C` in the terminal to stop it.
 - **Hard distractors** from iNaturalist "similar species", congeners, related
   deck members, and same-family species observed near the photo's location.
 - **Quiz screen**: up to 4 photos, small map, date, 4 to 6 choices, keyboard
-  shortcuts (`1`-`6` to answer, `Enter` for next), reveal with links to the
+  shortcuts (`1`-`6` to answer, then `1`-`4` to rate or `Enter` to accept the suggested rating), reveal with links to the
   observation and species page, and photo attribution.
+- **Spaced repetition (FSRS)**, the algorithm Anki uses: each species is
+  scheduled to come back just before you'd forget it. Due and new counts per
+  deck, a daily new-species limit, and Again / Hard / Good / Easy buttons
+  after each answer showing when you'd see it next.
 - **Polite to iNaturalist**: max 1 request per second, every response cached
   locally in SQLite.
 
@@ -51,7 +55,8 @@ inat-quiz/
 │   ├── taxa.py           local store of species names/photos/taxonomy
 │   ├── decks.py          building decks (list / taxon / place)
 │   ├── distractors.py    choosing hard wrong answers
-│   ├── scheduler.py      which card next (FSRS goes here in step 6)
+│   ├── fsrs.py           the FSRS spaced repetition maths
+│   ├── scheduler.py      which card next, applying ratings
 │   └── quiz.py           building questions and checking answers
 ├── static/               frontend (plain HTML/CSS/JS, no build step)
 │   ├── index.html
@@ -77,6 +82,7 @@ inat-quiz/
 | [04 Architecture](docs/04-architecture.md) | How the pieces fit together, API endpoints |
 | [05 Data model](docs/05-data-model.md) | Database tables, ready for FSRS and stats |
 | [06 Distractors](docs/06-distractors.md) | How the wrong answers are chosen |
+| [07 Spaced repetition](docs/07-spaced-repetition.md) | How FSRS schedules your reviews, and the ratings |
 | [Roadmap](docs/roadmap.md) | What's done and what's next |
 | [Changelog](CHANGELOG.md) | What changed in each version |
 

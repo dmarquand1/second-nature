@@ -138,6 +138,29 @@ def get_conn():
         conn.close()
 
 
+# Upgrades for databases created by older versions. Each entry runs once,
+# in order; PRAGMA user_version records how far a database has got.
+MIGRATIONS = [
+    # 1: version 0.1.0 schema (created by SCHEMA above)
+    "",
+    # 2: FSRS (version 0.2.0)
+    """
+    ALTER TABLE decks ADD COLUMN new_per_day INTEGER NOT NULL DEFAULT 20;
+    ALTER TABLE reviews ADD COLUMN card_before TEXT;   -- JSON of the card's FSRS state before this answer
+    ALTER TABLE reviews ADD COLUMN card_after TEXT;    -- JSON of the card's FSRS state after this answer
+    -- Cards answered with the old placeholder scheduler have no FSRS state yet: start them as new.
+    UPDATE cards SET state = 0, due = NULL WHERE stability IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_cards_due ON cards(deck_id, due);
+    """,
+]
+
+
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        for i, script in enumerate(MIGRATIONS, start=1):
+            if i > version:
+                if script.strip():
+                    conn.executescript(script)
+                conn.execute(f"PRAGMA user_version = {i}")

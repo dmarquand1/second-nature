@@ -13,9 +13,10 @@ async function DecksView() {
     <div class="card deck">
       <h2>${esc(d.name)}</h2>
       <p class="muted">${d.num_cards} species · ${esc(sourceLabel(d))}</p>
+      <p class="queue-line"><span class="pill due">${d.queue.due} due</span> <span class="pill new">${d.queue.new_available} new</span></p>
       <p class="muted">${d.num_reviews ? `${d.num_reviews} answers · ${Math.round(d.accuracy * 100)}% correct` : "Not studied yet"}</p>
       <div class="row">
-        <a class="btn primary" href="#/quiz/${d.id}">Study</a>
+        <a class="btn primary" href="#/quiz/${d.id}">${d.queue.due + d.queue.new_available ? "Study" : "Practice"}</a>
         <a class="btn" href="#/deck/${d.id}">Species</a>
         <button class="btn danger" data-del="${d.id}">Delete</button>
       </div>

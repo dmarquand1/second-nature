@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="iNat Quiz", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="iNat Quiz", version="0.2.0", lifespan=lifespan)
 
 
 # ---- request bodies -------------------------------------------------------
@@ -34,7 +34,14 @@ class DeckCreate(BaseModel):
     radius_km: float | None = None
     limit: int = 30
     num_choices: int = Field(default=config.DEFAULT_NUM_CHOICES, ge=4, le=6)
+    new_per_day: int = Field(default=config.DEFAULT_NEW_PER_DAY, ge=0, le=500)
     description: str | None = None
+
+
+class DeckSettings(BaseModel):
+    name: str | None = None
+    num_choices: int | None = Field(default=None, ge=4, le=6)
+    new_per_day: int | None = Field(default=None, ge=0, le=500)
 
 
 class SpeciesAdd(BaseModel):
@@ -44,6 +51,10 @@ class SpeciesAdd(BaseModel):
 class Answer(BaseModel):
     taxon_id: int
     response_ms: int | None = None
+
+
+class Rating(BaseModel):
+    rating: int = Field(ge=1, le=4)
 
 
 def _inat_guard(fn, *args, **kwargs):
@@ -81,9 +92,11 @@ def list_decks():
 
 @app.post("/api/decks")
 def create_deck(body: DeckCreate):
-    params = body.model_dump(exclude={"name", "source_type", "num_choices", "description"}, exclude_none=True)
+    params = body.model_dump(exclude={"name", "source_type", "num_choices", "new_per_day", "description"},
+                             exclude_none=True)
     return _inat_guard(decks.create_deck, body.name, body.source_type, params,
-                       num_choices=body.num_choices, description=body.description)
+                       num_choices=body.num_choices, new_per_day=body.new_per_day,
+                       description=body.description)
 
 
 @app.get("/api/decks/{deck_id}")
@@ -92,6 +105,14 @@ def get_deck(deck_id: int):
     if not d:
         raise HTTPException(404, "Deck not found")
     return d
+
+
+@app.patch("/api/decks/{deck_id}")
+def update_deck(deck_id: int, body: DeckSettings):
+    if not decks.get_deck(deck_id):
+        raise HTTPException(404, "Deck not found")
+    decks.update_settings(deck_id, **body.model_dump(exclude_none=True))
+    return decks.get_deck(deck_id)
 
 
 @app.delete("/api/decks/{deck_id}")
@@ -115,13 +136,18 @@ def remove_species(deck_id: int, taxon_id: int):
 
 # ---- quiz -----------------------------------------------------------------
 @app.get("/api/decks/{deck_id}/next")
-def next_question(deck_id: int):
-    return _inat_guard(quiz.next_question, deck_id)
+def next_question(deck_id: int, practice: bool = False):
+    return _inat_guard(quiz.next_question, deck_id, practice=practice)
 
 
 @app.post("/api/questions/{question_id}/answer")
 def answer(question_id: int, body: Answer):
     return _inat_guard(quiz.answer_question, question_id, body.taxon_id, body.response_ms)
+
+
+@app.post("/api/questions/{question_id}/rate")
+def rate(question_id: int, body: Rating):
+    return _inat_guard(quiz.rate_question, question_id, body.rating)
 
 
 # ---- frontend -------------------------------------------------------------

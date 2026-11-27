@@ -52,3 +52,18 @@ function autocomplete(input, list, search, render, onPick) {
     } catch (e) { toast(e.message, true); }
   }, 350));
 }
+
+// Dates and times
+function formatDate(s) {
+  const d = new Date(s + "T12:00:00");
+  return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function relativeTime(unixSeconds) {
+  const s = unixSeconds - Date.now() / 1000;
+  if (s < 90) return "in about a minute";
+  if (s < 3600) return `in ${Math.round(s / 60)} minutes`;
+  if (s < 20 * 3600) return `in ${Math.round(s / 3600)} hours`;
+  const days = Math.round(s / 86400);
+  return days <= 1 ? "tomorrow" : `in ${days} days`;
+}
