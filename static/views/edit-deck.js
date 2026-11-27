@@ -27,6 +27,11 @@ async function EditDeckView(deckId) {
           <select id="e-photos">${[["mixed", "Mixed: well-liked photos more often"], ["best", "Best first: most-favourited photos first"],
             ["any", "Any: favourites make no difference"]].map(([v, t]) =>
             `<option value="${v}" ${(d.photo_choice || "mixed") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label>Wrong answers from
+          <select id="e-answers">${[["anywhere", "Lookalikes from anywhere"],
+            ["mostly_deck", "Mostly this deck (lookalikes only if it runs short)"],
+            ["deck", "Only this deck (small decks show fewer choices)"]].map(([v, t]) =>
+            `<option value="${v}" ${(d.answer_source || "anywhere") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
       </div>
       <label class="check"><input type="checkbox" id="e-hide-dead" ${d.hide_dead === 0 || d.hide_dead === false ? "" : "checked"}>
         Hide photos of dead organisms (observations that iNaturalist users tagged "Dead")</label>
@@ -95,6 +100,7 @@ async function EditDeckView(deckId) {
       num_choices: +document.getElementById("e-choices").value,
       hide_dead: document.getElementById("e-hide-dead").checked,
       photo_choice: document.getElementById("e-photos").value,
+      answer_source: document.getElementById("e-answers").value,
     };
     if (place && place.id !== d.place_id) Object.assign(body, { place_id: place.id, place_name: place.name });
     if (!place && d.place_id) body.clear_place = true;

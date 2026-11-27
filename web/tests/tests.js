@@ -296,6 +296,27 @@ test("photo choice: best first, mixed by default, asks iNat for favourites", asy
   }
 });
 
+test("wrong answers from: anywhere by default, only this deck, mostly this deck", async () => {
+  const ids = async (d) => new Set((await api2("GET", `/api/decks/${d.id}/next?practice=true`)).choices.map((c) => c.id));
+  const d = await listDeck();                                         // species 1, 2, 4
+  eq(d.answer_source, "anywhere");
+  const only = await api2("PATCH", `/api/decks/${d.id}`, { answer_source: "deck" });
+  eq(only.answer_source, "deck");
+  for (let i = 0; i < 4; i++) eq([...(await ids(d))].sort(), [1, 2, 4], "only deck species");
+  await api2("PATCH", `/api/decks/${d.id}`, { answer_source: "mostly_deck" });
+  for (let i = 0; i < 4; i++) {
+    const s = await ids(d);
+    ok(s.size === 5 && [1, 2, 4].every((x) => s.has(x)), "deck species first, then topped up");
+  }
+  const big = await listDeck(["Turdus merula", "Song Thrush", "Mistle Thrush", "Redwing", "Fieldfare", "European Robin"],
+                             { answer_source: "mostly_deck" });
+  for (let i = 0; i < 4; i++) ok([...(await ids(big))].every((x) => x <= 6), "a big enough deck stays inside");
+  const one = await listDeck(["Turdus merula"], { answer_source: "deck" });
+  eq((await ids(one)).size, 5, "a one-species deck still gets choices");
+  const c = await IQ.distractors.deckCandidates(1, big.id);
+  ok(c.get(2).score > c.get(6).score, "close relatives score higher");
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.5 (2026-11-27) - choose where wrong answers come from
+
+- **Wrong answers from** deck setting (New deck and Edit pages): **Lookalikes from anywhere** (default, as before),
+  **Mostly this deck** (deck species first, outside lookalikes only if the deck runs short) or **Only this deck**
+  (small decks show fewer choices). Deck species are still ranked by how alike they are. Warm-up only looks up what
+  the setting needs. Works in the local app and the website. Database upgrade: migration 6 (`decks.answer_source`).
+- Tests: `tests/test_answer_source.py` (7 tests) and one more browser test.
+
 ## 0.4.4 (2026-11-27) - welcome tour
 
 - **Welcome tour** for new players: six short steps (making a deck, answering, ratings and spaced repetition,

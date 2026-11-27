@@ -99,6 +99,13 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 18. Option to keep wrong answers within the deck
+*Noted 2026-11-27.* Status: **Done (0.4.5)**.
+
+Should the possible answers be limited to species in the deck? It matters more
+the smaller the deck is, so make it a deck option rather than the rule:
+anywhere (default), mostly this deck, or only this deck.
+
 ### 17. Welcome tour for new players
 *Noted 2026-11-27.* Status: **Done (0.4.4)**.
 
@@ -146,6 +153,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| "Wrong answers from" deck setting | 0.4.5 |
 | Welcome tour for new players (skippable) | 0.4.4 |
 | Lighter website storage, Free up space button | 0.4.3 |
 | Favour well-liked photos (Which photos setting) | 0.4.2 |

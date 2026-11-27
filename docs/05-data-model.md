@@ -49,6 +49,11 @@ Photos are not in the database: they're files in `data/images/` (see [08](08-spe
 * `decks.photo_choice`: `mixed` (default), `best` or `any` (see [09 Decks](09-decks.md)).
 * `observations.faves`: how many iNaturalist users favourited the observation.
 
+## Version 0.4.5 (migration 6)
+
+* `decks.answer_source`: `anywhere` (default), `mostly_deck` or `deck`: where wrong answers
+  come from (see [06 Distractors](06-distractors.md)).
+
 ## Ready for stats (step 7)
 
 `reviews` records every answer with time, rating, response time, what you

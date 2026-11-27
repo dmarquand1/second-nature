@@ -35,8 +35,8 @@ IQ.warmup = (() => {
         await IQ.taxa.ensureDetails(card.taxon_id, o);
         const obs = await Q.nextObservation(card.taxon_id, deck.place_id, o, deck.hide_dead !== false, deck.photo_choice || "mixed");
         if (obs) {
-          await IQ.distractors.gatherCandidates(card.taxon_id, deckId, deck.place_id, obs.latitude, obs.longitude,
-                                                deck.num_choices - 1, o);
+          await IQ.distractors.prepare(card.taxon_id, deckId, deck.place_id, obs.latitude, obs.longitude,
+                                       deck.num_choices - 1, o);
           if (i <= cfg.WARMUP_IMAGES_FOR_NEXT) {
             preload(Q.usablePhotos(obs).slice(0, cfg.MAX_PHOTOS_PER_QUESTION).map((p) => Q.photoUrl(p.url, "medium")));
           }

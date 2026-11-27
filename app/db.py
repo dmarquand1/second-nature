@@ -184,6 +184,10 @@ MIGRATIONS = [
     ALTER TABLE decks ADD COLUMN photo_choice TEXT NOT NULL DEFAULT 'mixed';  -- 'mixed' | 'best' | 'any'
     ALTER TABLE observations ADD COLUMN faves INTEGER;                       -- favourites on iNaturalist
     """,
+    # 6: where wrong answers come from (version 0.4.5)
+    """
+    ALTER TABLE decks ADD COLUMN answer_source TEXT NOT NULL DEFAULT 'anywhere';  -- 'anywhere' | 'mostly_deck' | 'deck'
+    """,
 ]
 
 

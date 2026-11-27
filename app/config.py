@@ -54,6 +54,12 @@ DEAD_VALUE = 19
 #   any   - favourites make no difference
 PHOTO_CHOICES = ("mixed", "best", "any")
 
+# Where the wrong answers come from (deck setting "answer_source"):
+#   anywhere    - lookalikes from anywhere on iNaturalist, plus related deck species (default)
+#   mostly_deck - species in this deck first, lookalikes from outside only if it runs short
+#   deck        - only species in this deck (a small deck shows fewer choices)
+ANSWER_SOURCES = ("anywhere", "mostly_deck", "deck")
+
 # Big lists
 MAX_DECK_SPECIES = 5000
 

@@ -25,6 +25,8 @@ IQ.config = {
   PREFETCH_PENDING_MINUTES: 10,
   WARMUP_IMAGES_FOR_NEXT: 15,
   MAX_DECK_SPECIES: 5000,
+  // Where wrong answers come from (deck setting, see app/config.py ANSWER_SOURCES).
+  ANSWER_SOURCES: ["anywhere", "mostly_deck", "deck"],
   DESIRED_RETENTION: 0.9,
   DEFAULT_NEW_PER_DAY: 20,
   DAY_STARTS_AT_HOUR: 4,

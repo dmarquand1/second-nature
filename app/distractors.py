@@ -16,6 +16,12 @@ Candidates come from several sources, each adding to a score:
 
 Then a weighted random sample from the best candidates, so the same
 question does not always show the same options.
+
+The deck setting "Wrong answers from" (decks.answer_source) can keep them to
+the deck's own species: "deck" uses only deck species, "mostly_deck" uses deck
+species first and tops up with lookalikes from outside if the deck runs short.
+Deck species are then scored by how related they are, how often iNaturalist
+users confuse them, and how often you have.
 """
 import math
 import random
@@ -56,6 +62,63 @@ def _your_confusions(target_id: int) -> list:
         ).fetchall()
 
 
+def _add_deck_members(cands: dict, target: dict, deck_id: int, target_id: int) -> None:
+    for m in _deck_members(deck_id, target_id):
+        score = 0.5
+        if m.get("details_fetched"):
+            if target.get("genus_id") and m["genus_id"] == target["genus_id"]:
+                score += 2.0
+            elif target.get("family_id") and m["family_id"] == target["family_id"]:
+                score += 1.5
+            elif target.get("order_id") and m["order_id"] == target["order_id"]:
+                score += 1.0
+        elif target.get("iconic_taxon_name") and m.get("iconic_taxon_name") == target["iconic_taxon_name"]:
+            score += 0.5
+        _add(cands, {"id": m["id"], "name": m["name"], "preferred_common_name": m["common_name"],
+                     "rank": m["rank"], "iconic_taxon_name": m["iconic_taxon_name"]}, score, "in this deck")
+
+
+def deck_candidates(target_id: int, deck_id: int, place_id: int | None = None) -> dict:
+    """Only species in the deck, scored by relatedness, iNat "similar species" and your mix-ups.
+    One iNaturalist lookup at most (similar species, usually already saved)."""
+    target = ensure_details(target_id)
+    cands: dict = {}
+    _add_deck_members(cands, target, deck_id, target_id)
+    if not cands:
+        return cands
+    try:
+        similar = get_client().similar_species(target_id, place_id=place_id)
+    except InatError:
+        similar = []
+    for r in similar:
+        if r["taxon"]["id"] in cands:
+            _add(cands, cands[r["taxon"]["id"]]["taxon"], 3.0 + math.log1p(r.get("count", 0)) * 0.5, "similar species")
+    for row in _your_confusions(target_id):
+        if row["id"] in cands:
+            _add(cands, cands[row["id"]]["taxon"], 2.0 + min(row["n"] * 0.5, 2.0), "you've mixed these up before")
+    cands.pop(target_id, None)
+    return cands
+
+
+def _answer_source(deck_id: int | None) -> str:
+    if not deck_id:
+        return "anywhere"
+    with get_conn() as conn:
+        row = conn.execute("SELECT answer_source FROM decks WHERE id = ?", (deck_id,)).fetchone()
+    return (row["answer_source"] if row else None) or "anywhere"
+
+
+def _weighted_sample(cands: dict, n: int, rng: random.Random) -> list[dict]:
+    ranked = sorted(cands.values(), key=lambda c: c["score"], reverse=True)
+    pool = ranked[: max(n * 3, 10)]
+    chosen = []
+    while pool and len(chosen) < n:
+        weights = [c["score"] ** 2 for c in pool]
+        pick = rng.choices(range(len(pool)), weights=weights, k=1)[0]
+        chosen.append(pool.pop(pick))
+    return chosen
+
+
 def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int | None = None,
                       lat: float | None = None, lng: float | None = None, needed: int = 5) -> dict:
     client = get_client()
@@ -79,20 +142,7 @@ def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int 
 
     # 3. Other species in this deck, weighted by how related they are.
     if deck_id:
-        for m in _deck_members(deck_id, target_id):
-            m_full = m if m.get("details_fetched") else None
-            score, reason = 0.5, "in this deck"
-            if m_full:
-                if target.get("genus_id") and m_full["genus_id"] == target["genus_id"]:
-                    score += 2.0
-                elif target.get("family_id") and m_full["family_id"] == target["family_id"]:
-                    score += 1.5
-                elif target.get("order_id") and m_full["order_id"] == target["order_id"]:
-                    score += 1.0
-            elif target.get("iconic_taxon_name") and m.get("iconic_taxon_name") == target["iconic_taxon_name"]:
-                score += 0.5
-            _add(cands, {"id": m["id"], "name": m["name"], "preferred_common_name": m["common_name"],
-                         "rank": m["rank"], "iconic_taxon_name": m["iconic_taxon_name"]}, score, reason)
+        _add_deck_members(cands, target, deck_id, target_id)
 
     # 4. Same family that co-occurs near where this photo was taken.
     if target.get("family_id") and lat is not None and lng is not None:
@@ -127,19 +177,36 @@ def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int 
     return cands
 
 
+def _needs_outside(source: str, inside: int, needed: int) -> bool:
+    """Whether lookalikes from outside the deck are needed for this setting."""
+    return source == "anywhere" or (inside < needed and (source == "mostly_deck" or inside == 0))
+
+
+def prepare_candidates(target_id: int, deck_id: int | None, place_id: int | None = None,
+                       lat: float | None = None, lng: float | None = None, needed: int = 4) -> None:
+    """Look up (and so save) what pick_distractors will need, for the deck's setting. Used by warm-up."""
+    source = _answer_source(deck_id)
+    inside = deck_candidates(target_id, deck_id, place_id) if source != "anywhere" else {}
+    if _needs_outside(source, len(inside), needed):
+        gather_candidates(target_id, deck_id, place_id, lat, lng, needed=needed)
+
+
 def pick_distractors(target_id: int, n: int, deck_id: int | None = None, place_id: int | None = None,
                      lat: float | None = None, lng: float | None = None,
                      rng: random.Random | None = None) -> list[dict]:
     """Return `n` distractor taxa (iNat-style dicts with a 'reasons' list)."""
     rng = rng or random.Random()
-    cands = gather_candidates(target_id, deck_id, place_id, lat, lng, needed=n)
-    ranked = sorted(cands.values(), key=lambda c: c["score"], reverse=True)
-    pool = ranked[: max(n * 3, 10)]
+    source = _answer_source(deck_id)
     chosen = []
-    while pool and len(chosen) < n:
-        weights = [c["score"] ** 2 for c in pool]
-        pick = rng.choices(range(len(pool)), weights=weights, k=1)[0]
-        chosen.append(pool.pop(pick))
+    if source in ("deck", "mostly_deck"):
+        chosen = _weighted_sample(deck_candidates(target_id, deck_id, place_id), n, rng)
+    # "Only this deck" with no other species in the deck would leave nothing to choose from,
+    # so that (and "mostly this deck" when it runs short) tops up with lookalikes.
+    if _needs_outside(source, len(chosen), n):
+        cands = gather_candidates(target_id, deck_id, place_id, lat, lng, needed=n)
+        for c in chosen:
+            cands.pop(c["taxon"]["id"], None)
+        chosen += _weighted_sample(cands, n - len(chosen), rng)
     with get_conn() as conn:
         for c in chosen:
             upsert_taxon(conn, c["taxon"])

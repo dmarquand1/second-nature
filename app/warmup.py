@@ -14,7 +14,7 @@ import json
 
 from . import config, images, jobs
 from .db import get_conn
-from .distractors import gather_candidates
+from .distractors import prepare_candidates
 from .inat_client import InatError
 from .quiz import _photo_url, fill_pools_batched, next_observation
 from .taxa import ensure_details, ensure_details_many
@@ -54,8 +54,8 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
             ensure_details(card["taxon_id"])
             obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])
             if obs:
-                gather_candidates(card["taxon_id"], deck_id, deck["place_id"],
-                                  obs["latitude"], obs["longitude"], needed=deck["num_choices"] - 1)
+                prepare_candidates(card["taxon_id"], deck_id, deck["place_id"],
+                                   obs["latitude"], obs["longitude"], needed=deck["num_choices"] - 1)
                 if i <= config.WARMUP_IMAGES_FOR_NEXT:
                     photos = json.loads(obs["photos"])[: config.MAX_PHOTOS_PER_QUESTION]
                     images.prefetch([_photo_url(p["url"], "medium") for p in photos])

@@ -56,6 +56,13 @@ function NewDeckView() {
             <option value="any">Any: favourites make no difference</option>
           </select>
         </label>
+        <label>Wrong answers from
+          <select name="answer_source">
+            <option value="anywhere" selected>Lookalikes from anywhere</option>
+            <option value="mostly_deck">Mostly this deck (lookalikes only if it runs short)</option>
+            <option value="deck">Only this deck (small decks show fewer choices)</option>
+          </select>
+        </label>
       </div>
       <label class="check"><input type="checkbox" name="hide_dead" checked>
         Hide photos of dead organisms (observations that iNaturalist users tagged "Dead")</label>
@@ -124,6 +131,7 @@ function NewDeckView() {
       new_per_day: +form.new_per_day.value,
       hide_dead: form.hide_dead.checked,
       photo_choice: form.photo_choice.value,
+      answer_source: form.answer_source.value,
     };
     if (type === "list") body.species = form.species.value.split("\n").map((s) => s.trim()).filter(Boolean);
     if (taxon && type !== "list") { body.taxon_id = taxon.id; body.taxon_name = taxon.common_name || taxon.name; }

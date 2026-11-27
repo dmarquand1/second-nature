@@ -79,3 +79,9 @@ Whatever you choose, a photo you've seen fewer times always comes before one you
 seen more, so you work through all of a species' photos. Many good photos have no
 favourites at all, especially for less popular species, so favourites are a
 preference, not a filter.
+
+## Wrong answers from
+
+Choose whether wrong answers are lookalikes from anywhere (default), mostly
+from this deck, or only from this deck. See
+[06 How the wrong answers are chosen](06-distractors.md#wrong-answers-from-deck-setting).
