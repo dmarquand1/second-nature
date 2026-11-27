@@ -58,7 +58,7 @@ function QuizView(deckId) {
       try { w = await api.get(`/api/decks/${deckId}/warmup`); } catch { return; }
       if (!w || !["queued", "running"].includes(w.status)) { box.classList.add("hidden"); return; }
       box.classList.remove("hidden");
-      box.innerHTML = `Getting the deck ready in the background: ${w.done} of ${w.total || "?"} species
+      box.innerHTML = `Getting the next species ready in the background: ${w.done} of ${w.total || "?"}
         <span class="bar"><span style="width:${w.total ? (100 * w.done / w.total) : 0}%"></span></span>`;
       await new Promise((r) => setTimeout(r, 2000));
     }

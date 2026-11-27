@@ -21,13 +21,16 @@ from .taxa import ensure_details, ensure_details_many, ensure_obs_counts
 
 
 def _cards_in_study_order(deck_id: int) -> list[dict]:
+    """Species due soonest, then new ones in the deck's "New species order"."""
+    import random
+    from .scheduler import order_new
     with get_conn() as conn:
-        rows = conn.execute(
-            """SELECT * FROM cards WHERE deck_id = ?
-               ORDER BY CASE WHEN state = 0 THEN 1 ELSE 0 END, due, id""",
-            (deck_id,),
-        ).fetchall()
-    return [dict(r) for r in rows]
+        started = [dict(r) for r in conn.execute(
+            "SELECT * FROM cards WHERE deck_id = ? AND state != 0 ORDER BY due, id", (deck_id,))]
+        new = [dict(r) for r in conn.execute("SELECT * FROM cards WHERE deck_id = ? AND state = 0", (deck_id,))]
+        deck = conn.execute("SELECT new_order FROM decks WHERE id = ?", (deck_id,)).fetchone()
+        new = order_new(conn, deck_id, new, (deck["new_order"] if deck else None) or "random", random.Random())
+    return started + new
 
 
 @jobs.handler("warmup")
@@ -36,11 +39,14 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
         deck = conn.execute("SELECT * FROM decks WHERE id = ?", (deck_id,)).fetchone()
     if not deck:
         return {}
-    cards = _cards_in_study_order(deck_id)
+    all_cards = _cards_in_study_order(deck_id)
+    # Photos and look-alikes for the next few species only: a big deck would otherwise mean
+    # thousands of requests. The rest are prepared as you get to them.
+    cards = all_cards[: config.WARMUP_SPECIES_AHEAD]
     total = len(cards)
     progress(0, total, "Getting photos and look-alikes ready", force=True)
     failed = removed = 0
-    ids = [c["taxon_id"] for c in cards]
+    ids = [c["taxon_id"] for c in all_cards]
     # Batched first: taxonomy for 30 species per request, photo pools for 10 per request.
     try:
         progress(0, total, "Fetching taxonomy for all species", force=True)
@@ -48,7 +54,7 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
         if deck["new_order"] in ("common", "rare"):
             ensure_obs_counts(deck_id)
         progress(0, total, "Fetching photos for all species", force=True)
-        fill_pools_batched(ids, deck["place_id"])
+        fill_pools_batched([c["taxon_id"] for c in cards], deck["place_id"])
     except InatError:
         pass   # fall back to one-by-one below
     for i, card in enumerate(cards, start=1):

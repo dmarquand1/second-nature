@@ -61,10 +61,12 @@ IQ.scheduler = (() => {
   }
 
   // Sort a deck's new cards for its "New species order" setting (same as app/scheduler.py
-  // order_new). Ties, and species we know nothing about yet, are in random order.
+  // order_new). Ties, and species we know nothing about yet, are in a fixed shuffled order
+  // (so the warm-up can prepare the species the quiz will actually pick next).
   const RELATED = [["genus_id", 1.0], ["family_id", 0.6], ["order_id", 0.3]];
   function orderNew(deckId, rows, order) {
-    rows = U.shuffle([...rows]);
+    const mix = (r) => Number((BigInt(r.id) * 2654435761n) % 4294967296n);
+    rows = [...rows].sort((a, b) => mix(a) - mix(b));
     if (order === "random" || !rows.length) return rows;
     const by = (key) => (a, b) => { const x = key(a), y = key(b);
       for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1; return 0; };

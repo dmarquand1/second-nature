@@ -218,7 +218,7 @@ test("cache: one request for repeats and for two at once; old copy when offline"
   await IQ.store.cachePut(key, row.response, 0);
   FakeInat.state.fail = true;
   eq((await IQ.inat.taxaByIds([1]))[0].id, 1);
-  await throws(IQ.inat.taxaByIds([2]), /Could not reach iNaturalist/);
+  await throws(IQ.inat.taxaByIds([2]), /fewer requests|Could not reach iNaturalist/);
 });
 
 test("rate limit: the quiz goes ahead of background work", async () => {
@@ -393,6 +393,37 @@ test("species with no research-grade photos are taken out of the deck", async ()
   await throws(api2("GET", `/api/decks/${f.id}/next`));
   FakeInat.state.fail = false;
   eq((await api2("GET", `/api/decks/${f.id}`)).num_cards, 2, "nothing taken out when offline");
+});
+
+test("too many requests: everything backs off, with a clear message", async () => {
+  const start = IQ.config.BACKOFF_START_SECONDS;
+  IQ.config.BACKOFF_START_SECONDS = 0.05;              // 0.05 s, 0.1 s, 0.2 s... instead of 15 s, 30 s, 60 s
+  IQ.inat.setMinInterval(0.001);                       // back-off only applies when there's a rate limit
+  FakeInat.state.busy = true;
+  try {
+    const t0 = Date.now();
+    const e = await throws(IQ.inat.taxaByIds([1]), /fewer requests/);
+    ok(e.busy, "marked as busy");
+    ok(Date.now() - t0 >= 140, "waited longer each time");
+    ok(IQ.inat.coolingDown(), "every request now waits");
+  } finally {
+    IQ.config.BACKOFF_START_SECONDS = start;
+    IQ.inat.setMinInterval(0);
+    FakeInat.state.busy = false;
+  }
+});
+
+test("warm-up only prepares the next few species, in the deck's order", async () => {
+  const ahead = IQ.config.WARMUP_SPECIES_AHEAD;
+  IQ.config.WARMUP_SPECIES_AHEAD = 3;
+  try {
+    const d = await listDeck(["Turdus merula", "Song Thrush", "Mistle Thrush", "Redwing", "Fieldfare", "European Robin",
+                              "Common Nightingale"], { new_order: "rare" });
+    const w = IQ.warmup.status(d.id);
+    eq([w.status, w.total], ["done", 3]);
+    const looked = FakeInat.calls("/identifications/similar_species").map((c) => Number(c.params.taxon_id));
+    eq([...new Set(looked)].sort(), [5, 6, 7], "look-alikes fetched only for the 3 rarest");
+  } finally { IQ.config.WARMUP_SPECIES_AHEAD = ahead; }
 });
 
 // ---- stats and backup -------------------------------------------------------

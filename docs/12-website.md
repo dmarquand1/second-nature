@@ -47,8 +47,14 @@ the same screens.
   used, and the photographer and licence are shown under every photo. See
   [13 Putting it online responsibly](13-compliance.md) for all the rules the
   site follows.
-* **A daily budget**: each browser makes at most 1 request per second and at
-  most 9,000 a day (background work pauses at 7,000), within iNaturalist's guidance.
+* **A daily budget**: each browser makes at most 1 request per second (background
+  work one every 2 seconds) and at most 9,000 a day (background work pauses at
+  7,000), within iNaturalist's guidance.
+* **Backs off when asked.** If iNaturalist answers "429 Too Many Requests" (the
+  browser often reports it as a failed connection), every request waits 15 s,
+  then 30 s, 60 s and so on up to 5 minutes, and the warm-up stops until next time.
+* **The warm-up only prepares the next 30 species** (photos and look-alikes),
+  in the order you'll study them, so big decks don't mean thousands of requests.
 * **Progress is saved in the player's browser.** It survives closing the tab and
   restarting the computer, but it's tied to that browser on that computer. Use
   **Settings → Download backup** to keep a copy or move it to another computer

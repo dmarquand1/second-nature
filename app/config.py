@@ -34,6 +34,7 @@ NEARBY_GRID_DEG = 1.0            # photos in the same 1-degree cell share one "n
 # Speed
 PREFETCH_PENDING_MINUTES = 10    # questions prepared ahead count as "in use" for this long
 WARMUP_IMAGES_FOR_NEXT = 15      # warm-up downloads photos for this many upcoming species
+WARMUP_SPECIES_AHEAD = 30        # warm-up prepares photos and look-alikes for this many upcoming species
 
 # Offline photo cache (data/images)
 IMAGE_CACHE_DIR = DATA_DIR / "images"

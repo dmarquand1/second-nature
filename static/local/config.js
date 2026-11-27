@@ -7,6 +7,12 @@ IQ.config = {
   // iNaturalist asks API users to stay at or below ~1 request per second.
   // Each visitor's browser keeps to this on its own.
   MIN_SECONDS_BETWEEN_REQUESTS: 1.0,
+  // Background work (warm-up, deck building) goes at half that speed, leaving room for the quiz.
+  BACKGROUND_SLOWDOWN: 2,
+  // If iNaturalist says "too many requests" (or can't be reached), every request from this
+  // browser waits this long, doubling each time it happens again in a row (up to the max).
+  BACKOFF_START_SECONDS: 15,
+  BACKOFF_MAX_SECONDS: 300,
   CACHE_TTL: {                       // seconds a cached iNat answer stays fresh
     taxa: 30 * 86400, places: 30 * 86400, similar_species: 14 * 86400,
     species_counts: 7 * 86400, observations: 3 * 86400, default: 86400,
@@ -24,6 +30,7 @@ IQ.config = {
   NEARBY_GRID_DEG: 1.0,
   PREFETCH_PENDING_MINUTES: 10,
   WARMUP_IMAGES_FOR_NEXT: 15,
+  WARMUP_SPECIES_AHEAD: 30,          // the warm-up prepares photos and look-alikes for this many upcoming species
   MAX_DECK_SPECIES: 5000,
   // Where wrong answers come from (deck setting, see app/config.py ANSWER_SOURCES).
   ANSWER_SOURCES: ["anywhere", "mostly_deck", "deck"],

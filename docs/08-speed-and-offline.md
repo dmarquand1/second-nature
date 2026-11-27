@@ -56,6 +56,7 @@ With a warmed-up deck and the photo cache, you can keep studying without interne
 | Setting | Default | Meaning |
 |---|---|---|
 | `NEARBY_GRID_DEG` | 1.0 | Grid size for shared "nearby" lookups |
+| `WARMUP_SPECIES_AHEAD` | 30 | How many upcoming species the warm-up prepares photos and look-alikes for (the rest as you get to them) |
 | `WARMUP_IMAGES_FOR_NEXT` | 15 | How many upcoming species get their (medium) photos downloaded by the warm-up |
 | `PREFETCH_PENDING_MINUTES` | 10 | How long a prepared-but-unanswered question keeps its species reserved |
 | `IMAGE_CACHE_MAX_MB` | 1500 | Photo cache size limit |

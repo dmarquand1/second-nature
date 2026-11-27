@@ -5,6 +5,11 @@
 // newest entry (remembered in this browser only).
 const UPDATES = [
   {
+    version: "0.4.9", date: "27 November 2026", items: [
+      "Big decks no longer flood iNaturalist with requests: the next 30 species are prepared at a time, and if iNaturalist asks for a break, Second Nature waits before trying again. This fixes \"Could not reach iNaturalist\" errors with big decks.",
+    ],
+  },
+  {
     version: "0.4.8", date: "27 November 2026", items: [
       "Species with no research-grade photos on iNaturalist that we can show (often very rare ones) are now taken out of the deck automatically, instead of stopping the quiz. The deck page lists any that were taken out.",
     ],

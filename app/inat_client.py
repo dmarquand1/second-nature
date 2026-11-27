@@ -108,7 +108,9 @@ class InatClient:
                 time.sleep(2 * (attempt + 1))
                 continue
             if resp.status_code == 429 or resp.status_code >= 500:
-                time.sleep(5 * (attempt + 1))
+                # "Too many requests": give iNaturalist a proper break (15 s, then 30 s).
+                if attempt < 2:
+                    time.sleep(15 * 2 ** attempt if resp.status_code == 429 else 5 * (attempt + 1))
                 continue
             if resp.status_code >= 400:
                 raise InatError(f"iNaturalist returned {resp.status_code} for {path}: {resp.text[:200]}")

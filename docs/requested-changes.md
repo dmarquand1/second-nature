@@ -99,6 +99,14 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 22. "Could not reach iNaturalist" with a big deck
+*Noted 2026-11-27.* Status: **Fixed (0.4.9)**.
+
+Studying a 970-species European birds deck kept saying it couldn't reach
+iNaturalist. The browser's network log showed "429 Too Many Requests": the
+warm-up was preparing look-alikes for every species. Now it prepares the next
+30, background requests are slower, and everything backs off after a 429.
+
 ### 21. Remove species with no research-grade photos
 *Noted 2026-11-27.* Status: **Done (0.4.8)**.
 
@@ -178,6 +186,7 @@ delete saved progress. Show the result in Settings.
 
 | Change | Version |
 |---|---|
+| Gentler on iNaturalist: warm-up 30 ahead, back-off after 429 | 0.4.9 |
 | Species with no usable photos taken out of decks | 0.4.8 |
 | New decks no longer wait behind warm-ups (fix) | 0.4.7 |
 | New species order, What's new page | 0.4.6 |

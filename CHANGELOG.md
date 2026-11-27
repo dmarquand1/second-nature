@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.9 (2026-11-27) - gentler on iNaturalist
+
+- Fix: big decks could make iNaturalist answer "429 Too Many Requests", which showed as "Could not reach
+  iNaturalist". The warm-up used to prepare photos and look-alikes for every species in a deck (around 4 requests
+  each, so thousands for a 970-species deck). Now:
+  - the warm-up prepares only the next 30 species, in the order you'll study them (the rest are prepared as you
+    get to them, and again each time you study);
+  - background requests go at half speed (one every 2 seconds), so the quiz always has room;
+  - on "too many requests", every request from the browser waits (15 s, then 30 s, 60 s... up to 5 minutes), and
+    the warm-up stops until next time; the message now says iNaturalist wants fewer requests;
+  - new species with the same priority come in a fixed shuffled order (instead of a fresh shuffle each time), so
+    the warm-up prepares the ones the quiz will actually pick.
+  Local app: the same warm-up limit, and longer waits after "too many requests".
+- Tests: two more browser tests and one more in `tests/test_new_order.py`.
+
 ## 0.4.8 (2026-11-27) - species with no usable photos are taken out
 
 - Species with no research-grade photos on iNaturalist that can be shown (often very rare species, and on the

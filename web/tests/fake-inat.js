@@ -79,12 +79,13 @@ const FakeInat = (() => {
     const params = new URLSearchParams(query);
     state.calls.push({ path, params: Object.fromEntries(params) });
     if (state.fail) throw new Error("network down");
+    if (state.busy) return { status: 429, json: async () => ({}), text: async () => "Too Many Requests" };
     const body = respond(path, params);
     if (!body) return { status: 404, json: async () => ({}), text: async () => "not found" };
     return { status: 200, json: async () => JSON.parse(JSON.stringify(body)), text: async () => JSON.stringify(body) };
   }
 
-  function reset() { state.calls = []; state.omitAncestors = false; state.fail = false; state.noPhotos = new Set(); }
+  function reset() { state.calls = []; state.omitAncestors = false; state.fail = false; state.busy = false; state.noPhotos = new Set(); }
   const calls = (path) => state.calls.filter((c) => (path instanceof RegExp ? path.test(c.path) : c.path === path));
 
   return { fetcher, reset, calls, state, SPECIES, ORDER, FAMILY, GENUS, OTHER_GENUS };

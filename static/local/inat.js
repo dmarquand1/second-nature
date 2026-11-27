@@ -2,7 +2,8 @@
 //
 // Each player's browser talks to iNaturalist directly (no server in between):
 //   * at most one request per second from this browser (iNaturalist's guideline),
-//     with the quiz you're looking at going ahead of background work;
+//     background work at half that, and the quiz you're looking at goes first;
+//   * if iNaturalist says "too many requests", everything waits (15 s, then 30 s, 60 s...);
 //   * answers are cached in IndexedDB, trimmed to the fields the app uses, so repeat lookups are instant;
 //   * if two parts of the app ask for the same thing at once, only one request is made;
 //   * if iNaturalist can't be reached, an older cached answer is used when there is one.
@@ -16,14 +17,18 @@ IQ.inat = (() => {
   // ---- rate limit with priority ---------------------------------------------
   const waiting = [];               // {bg, go}
   let last = 0, timer = null;
+  let cooldownUntil = 0, strikes = 0;   // backing off after "too many requests"
   function slot(bg) {
     return new Promise((go) => { waiting.push({ bg, go }); pump(); });
   }
   function pump() {
     if (timer || !waiting.length) return;
-    const delay = Math.max(0, last + minInterval - Date.now());
+    const fg = waiting.some((w) => !w.bg);
+    const gap = fg ? minInterval : minInterval * cfg.BACKGROUND_SLOWDOWN;
+    const delay = Math.max(0, last + gap - Date.now(), cooldownUntil - Date.now());
     timer = setTimeout(() => {
       timer = null;
+      if (Date.now() < cooldownUntil) return pump();        // a back-off started while waiting
       let i = waiting.findIndex((w) => !w.bg);     // foreground first
       if (i < 0) i = 0;
       const [w] = waiting.splice(i, 1);
@@ -32,6 +37,14 @@ IQ.inat = (() => {
       pump();
     }, delay);
   }
+  // iNaturalist said "too many requests" (when it does, the browser often only reports a
+  // failed connection): everything from this browser waits, longer each time in a row.
+  function backOff() {
+    const secs = Math.min(cfg.BACKOFF_START_SECONDS * 2 ** strikes, cfg.BACKOFF_MAX_SECONDS);
+    strikes++;
+    cooldownUntil = Date.now() + secs * 1000 * (minInterval ? 1 : 0);
+  }
+  const BUSY = "iNaturalist is asking for fewer requests right now. Wait a minute or two, then try again.";
 
   function snapToGrid(value, grid) {
     return Math.round((Math.floor(Number(value) / grid) * grid + grid / 2) * 10000) / 10000;
@@ -75,21 +88,26 @@ IQ.inat = (() => {
       let res;
       try { res = await fetcher(path, query); }
       catch (e) {
-        if (attempt === 2) throw IQ.util.error(`Could not reach iNaturalist: ${e.message}`, 502);
-        await IQ.util.sleep(2000 * (attempt + 1) * (minInterval ? 1 : 0));
+        backOff();
+        if (attempt === 2) {
+          const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+          throw Object.assign(IQ.util.error(offline ? `Could not reach iNaturalist: ${e.message}` : BUSY, 502), { busy: !offline });
+        }
         continue;
       }
       if (res.status === 429 || res.status >= 500) {
-        await IQ.util.sleep(5000 * (attempt + 1) * (minInterval ? 1 : 0));
+        backOff();
+        if (attempt === 2) throw Object.assign(IQ.util.error(BUSY, 502), { busy: true });
         continue;
       }
+      strikes = 0;
       if (res.status >= 400) {
         const t = await res.text().catch(() => "");
         throw IQ.util.error(`iNaturalist returned ${res.status} for ${path}: ${t.slice(0, 200)}`, 502);
       }
       return res.json();
     }
-    throw IQ.util.error(`iNaturalist kept failing for ${path}`, 502);
+    throw Object.assign(IQ.util.error(BUSY, 502), { busy: true });
   }
 
   // ---- keep only what the app uses ---------------------------------------------
@@ -176,7 +194,8 @@ IQ.inat = (() => {
   return {
     snapToGrid, cacheKey, get, cached, slim, requestsToday: () => todayCount().n,
     setFetcher(fn) { fetcher = fn || defaultFetch; },
-    setMinInterval(seconds) { minInterval = seconds * 1000; },
+    setMinInterval(seconds) { minInterval = seconds * 1000; strikes = 0; cooldownUntil = 0; },
+    coolingDown: () => Date.now() < cooldownUntil,
 
     async autocompleteTaxa(q, perPage = 10) {
       return (await get("/taxa/autocomplete", { q, per_page: perPage, is_active: "true" }, "taxa", { noCache: true })).results;

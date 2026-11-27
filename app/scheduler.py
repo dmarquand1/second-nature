@@ -118,9 +118,9 @@ _RELATED = (("genus_id", 1.0), ("family_id", 0.6), ("order_id", 0.3))
 def order_new(conn, deck_id: int, new_rows: list[dict], order: str, rng: random.Random) -> list[dict]:
     """Sort a deck's new cards for the deck's "New species order" setting.
 
-    Ties (and species we know nothing about yet) are in random order."""
-    rows = list(new_rows)
-    rng.shuffle(rows)
+    Ties (and species we know nothing about yet) are in a fixed shuffled order, so the
+    warm-up can prepare the species the quiz will actually pick next."""
+    rows = sorted(new_rows, key=lambda r: (r["id"] * 2654435761) % 2**32)
     if order == "random" or not rows:
         return rows
     if order == "added":

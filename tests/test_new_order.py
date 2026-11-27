@@ -78,3 +78,11 @@ def test_next_question_follows_the_order(fake):
         tid = conn.execute("SELECT c.taxon_id FROM questions q JOIN cards c ON c.id = q.card_id WHERE q.id = ?",
                            (q["question_id"],)).fetchone()[0]
     assert tid == 7
+
+
+def test_warmup_prepares_only_the_next_species_in_order(fake, monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "WARMUP_SPECIES_AHEAD", 3)
+    make_deck(species=ALL, new_order="rare")
+    looked = {c[1]["taxon_id"] for c in fake.calls if c[0] == "similar_species"}
+    assert looked == {5, 6, 7}
