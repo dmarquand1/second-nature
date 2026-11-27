@@ -14,10 +14,13 @@ const Shortcuts = (() => {
       el = document.createElement("div");
       el.className = "modal hidden";
       el.innerHTML = `<div class="card modal-box"><div class="row between"><h2>Keyboard shortcuts</h2>
-        <button class="btn" data-close>Close</button></div>
+        <div class="row"><button class="btn" data-tour>Show the tour</button><button class="btn" data-close>Close</button></div></div>
         ${LIST.map(([h, rows]) => `<h3>${h}</h3><table class="keys">${rows.map(([k, d]) =>
           `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join("")}</table>`).join("")}</div>`;
-      el.addEventListener("click", (e) => { if (e.target === el || e.target.dataset.close !== undefined) toggle(); });
+      el.addEventListener("click", (e) => {
+        if (e.target.dataset.tour !== undefined) { toggle(); Tutorial.start(); return; }
+        if (e.target === el || e.target.dataset.close !== undefined) toggle();
+      });
       document.body.appendChild(el);
     }
     el.classList.toggle("hidden");
@@ -25,6 +28,7 @@ const Shortcuts = (() => {
   let lastG = 0;
   window.addEventListener("keydown", (e) => {
     if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || (typeof Viewer !== "undefined" && Viewer.isOpen())) return;
+    if (typeof Tutorial !== "undefined" && Tutorial.isOpen()) return;
     if (e.key === "?") { e.preventDefault(); toggle(); return; }
     if (e.key === "Escape" && el && !el.classList.contains("hidden")) { toggle(); return; }
     if (e.key === "g") { lastG = Date.now(); return; }

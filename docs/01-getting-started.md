@@ -82,6 +82,10 @@ python run.py --no-browser    # don't open a browser tab
 
 ## Step 7. Make your first deck and study
 
+The first time you open the app, a short **welcome tour** explains how it works.
+Click **Next** to go through it, or **Skip tutorial** if you don't need it. You can
+see it again any time from the **?** help.
+
 1. Click **New deck**.
 2. Give it a name, e.g. `UK thrushes`.
 3. Choose how to build it:

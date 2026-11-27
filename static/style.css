@@ -232,3 +232,12 @@ label.btn { cursor: pointer; }
 .photo-credit { margin: 6px 0 0; }
 .viewer-credit { flex-basis: 100%; text-align: center; color: #bbb; }
 .viewer-credit a { color: #ddd; }
+
+/* Welcome tour (static/tutorial.js) */
+.tour-box h2 { margin-top: 0; }
+.tour-box ul { padding-left: 1.2em; }
+.tour-dots { display: flex; gap: 6px; justify-content: center; margin: 14px 0 10px; }
+.tour-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.tour-dot.on { background: var(--accent); }
+.tour-buttons { gap: 8px; }
+.btn.link { background: none; border-color: transparent; color: var(--muted); text-decoration: underline; padding-left: 0; }

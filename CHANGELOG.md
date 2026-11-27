@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.4 (2026-11-27) - welcome tour
+
+- **Welcome tour** for new players: six short steps (making a deck, answering, ratings and spaced repetition,
+  due and new, where progress is saved). It opens by itself on the Decks page when there are no decks yet,
+  and can be skipped at any point (**Skip tutorial**, Esc, or clicking outside it). Once finished or skipped it
+  isn't shown again in that browser. Open it again from **New here? Take the quick tour** on an empty Decks page,
+  **Show the tour** in the **?** help, or **Settings → Getting started** (website). Works in the local app and the website.
+- New file `static/tutorial.js`; styles in `static/style.css`.
+- Tests: three more browser tests (tour shown, skipped, reopened; not shown to players with decks; local app).
+
 ## 0.4.3 (2026-11-27) - lighter website storage
 
 Website only (the local app is unchanged). Saves much less in the browser, and keeps all progress.

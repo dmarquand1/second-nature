@@ -99,6 +99,11 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 17. Welcome tour for new players
+*Noted 2026-11-27.* Status: **Done (0.4.4)**.
+
+Add a tutorial for new users (those with no data), and make it possible to skip it.
+
 ### 16. Keep the website's saved data small
 *Noted 2026-11-27.* Status: **Done (0.4.3)**.
 
@@ -141,6 +146,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Welcome tour for new players (skippable) | 0.4.4 |
 | Lighter website storage, Free up space button | 0.4.3 |
 | Favour well-liked photos (Which photos setting) | 0.4.2 |
 | Hide dead organisms, plain "already running" message, keep browser progress | 0.4.1 |

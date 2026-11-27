@@ -65,6 +65,12 @@ async function SettingsView() {
     </section>
 
     <section class="card">
+      <h2>Getting started</h2>
+      <p class="small">A one-minute tour of how Second Nature works.</p>
+      <button class="btn" id="tour">Show the tour</button>
+    </section>
+
+    <section class="card">
       <h2>About</h2>
       <p class="muted small">Second Nature ${esc(IQ.VERSION)}, a free, non-commercial personal project. It is not made,
         endorsed or supported by <a href="https://www.inaturalist.org" target="_blank" rel="noopener">iNaturalist</a>.
@@ -88,6 +94,8 @@ async function SettingsView() {
     toast("Space freed up. Your progress is kept.");
     showUsage();
   };
+
+  document.getElementById("tour").onclick = () => Tutorial.start();
 
   document.getElementById("backup").onclick = () => {
     const blob = new Blob([JSON.stringify(IQ.store.exportData())], { type: "application/json" });

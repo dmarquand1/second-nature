@@ -159,3 +159,18 @@ def test_stats_page_and_shortcuts_help(page):
     assert page.locator(".chart").count() == 2
     page.keyboard.press("?")
     assert page.locator(".modal:not(.hidden)").count() == 1
+
+
+def test_welcome_tour_local_app(page):
+    """The local app shows the same tour to a new player, worded for the local app."""
+    page.goto(page.base + "/#/")
+    page.wait_for_selector(".tour", timeout=10000)
+    for _ in range(5):
+        page.click(".tour [data-next]")
+    assert "data" in page.inner_text(".tour") and "browser" not in page.inner_text(".tour")
+    page.click(".tour [data-done]")
+    assert page.locator(".tour").count() == 0
+    # "?" help has a button to see it again.
+    page.keyboard.press("?")
+    page.click("[data-tour]")
+    page.wait_for_selector(".tour")

@@ -88,3 +88,47 @@ def test_website_end_to_end(page):
         page.click("#backup")
     data = json.loads(open(dl.value.path()).read())
     assert data["app"] == "inat-quiz" and len(data["tables"]["reviews"]) == 1
+
+
+def test_welcome_tour_for_new_players(page):
+    """A new player (no decks) gets a short tour, can skip it, and can open it again."""
+    page.goto(page.base + "/play/#/")
+    page.wait_for_selector(".tour", timeout=10000)
+    assert "Welcome to Second Nature" in page.inner_text(".tour")
+    page.click(".tour [data-next]")                          # "Show me"
+    assert "Make a deck" in page.inner_text(".tour")
+    page.keyboard.press("ArrowRight")
+    assert "Name the species" in page.inner_text(".tour")
+    page.click(".tour [data-skip]")                          # skip partway through
+    assert page.locator(".tour").count() == 0
+    page.reload()                                            # not shown again once skipped
+    page.wait_for_selector("#start-tour")
+    page.wait_for_timeout(300)
+    assert page.locator(".tour").count() == 0
+    page.click("#start-tour")                                # ...but can be opened again
+    page.wait_for_selector(".tour")
+    page.keyboard.press("Escape")
+    assert page.locator(".tour").count() == 0
+    # From Settings, all the way through: the last step goes to New deck.
+    page.goto(page.base + "/play/#/settings")
+    page.click("#tour")
+    for _ in range(5):
+        page.click(".tour [data-next]")
+    assert "Your progress" in page.inner_text(".tour") and "this browser" in page.inner_text(".tour")
+    page.click(".tour [data-next]")                          # "Make my first deck"
+    page.wait_for_url("**/#/new")
+    assert page.locator(".tour").count() == 0
+
+
+def test_welcome_tour_not_shown_to_players_with_decks(page):
+    page.route("https://api.inaturalist.org/**", _fake_inat)
+    page.goto(page.base + "/play/#/new")
+    page.evaluate("localStorage.clear()")
+    page.fill("input[name=name]", "Thrushes")
+    page.fill("textarea[name=species]", "Turdus merula")
+    page.click("button[type=submit]")
+    page.wait_for_url("**/#/deck/*")
+    page.goto(page.base + "/play/#/")
+    page.wait_for_selector(".deck")
+    page.wait_for_timeout(300)
+    assert page.locator(".tour").count() == 0

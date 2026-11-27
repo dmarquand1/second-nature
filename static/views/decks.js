@@ -8,7 +8,10 @@ async function DecksView() {
   if (!here()) return;
   const list = document.getElementById("deck-list");
   if (!decks.length) {
-    list.innerHTML = `<div class="empty">No decks yet. <a href="#/new" class="btn">Create your first deck</a></div>`;
+    list.innerHTML = `<div class="empty">No decks yet. <a href="#/new" class="btn primary">Create your first deck</a>
+      <p class="small"><a href="#" id="start-tour">New here? Take the quick tour</a></p></div>`;
+    document.getElementById("start-tour").onclick = (e) => { e.preventDefault(); Tutorial.start(); };
+    if (typeof Tutorial !== "undefined") Tutorial.maybeStart(false);
     return;
   }
   list.innerHTML = decks.map((d) => `
