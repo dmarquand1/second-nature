@@ -69,6 +69,9 @@ ANSWER_SOURCES = ("anywhere", "mostly_deck", "deck")
 #   easy    - relatives of the species you know best first
 #   grouped - one group at a time (genus by genus, family by family)
 #   varied  - spread out: species unlike any you've started first
+# How many species without usable photos one question may skip (and take out of the deck).
+MAX_NO_PHOTO_SKIPS = 10
+
 NEW_ORDERS = ("random", "added", "common", "rare", "hard", "easy", "grouped", "varied")
 
 # Big lists

@@ -59,6 +59,11 @@ Photos are not in the database: they're files in `data/images/` (see [08](08-spe
 * `decks.new_order`: the order new species are introduced in (see [09 Decks](09-decks.md#new-species-order)).
 * `taxa.obs_count`: how many observations the species has on iNaturalist (for common/rare first).
 
+## Version 0.4.8 (migration 8)
+
+* `decks.no_photos`: JSON list of species (`id`, `name`, `common_name`) taken out of the deck because
+  iNaturalist has no research-grade photos of them that can be shown.
+
 ## Ready for stats (step 7)
 
 `reviews` records every answer with time, rating, response time, what you

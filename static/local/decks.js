@@ -201,12 +201,27 @@ IQ.decks = (() => {
     await S.remove("decks", deckId);
   }
 
+  // Take a species out of a deck because iNaturalist has no research-grade photos of it we can
+  // use (rare species often don't), and remember it so the deck page can say so.
+  async function dropNoPhotoSpecies(deckId, taxonId) {
+    const d = S.get("decks", deckId);
+    if (!d) return;
+    const t = S.get("taxa", taxonId) || {};
+    const gone = (d.no_photos || []).filter((g) => g.id !== taxonId);
+    gone.push({ id: taxonId, name: t.name || String(taxonId), common_name: t.common_name ?? null });
+    await S.update("decks", deckId, { no_photos: gone });
+    const cards = S.where("cards", (c) => c.deck_id === deckId && c.taxon_id === taxonId).map((c) => c.id);
+    const set = new Set(cards);
+    await S.remove("questions", S.where("questions", (q) => set.has(q.card_id)).map((q) => q.id));
+    await S.remove("cards", cards);
+  }
+
   function summary(d) {
     const revs = S.where("reviews", (r) => r.deck_id === d.id);
     const right = revs.reduce((n, r) => n + (r.correct ? 1 : 0), 0);
     return {
       ...d, source_params: d.source_params || {}, answer_source: d.answer_source || "anywhere",
-      new_order: d.new_order || "random",
+      new_order: d.new_order || "random", no_photos: d.no_photos || [],
       num_cards: cardCount(d.id), num_reviews: revs.length,
       accuracy: revs.length ? Math.round((right / revs.length) * 1000) / 1000 : null,
       queue: IQ.scheduler.queueCounts(d.id),
@@ -237,5 +252,5 @@ IQ.decks = (() => {
     return d;
   }
 
-  return { cleanNames, resolveName, create, addSpecies, addTaxaIds, removeCards, updateSettings, remove, list, get: getDeck };
+  return { cleanNames, resolveName, dropNoPhotoSpecies, create, addSpecies, addTaxaIds, removeCards, updateSettings, remove, list, get: getDeck };
 })();

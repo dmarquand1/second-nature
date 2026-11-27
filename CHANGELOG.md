@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.8 (2026-11-27) - species with no usable photos are taken out
+
+- Species with no research-grade photos on iNaturalist that can be shown (often very rare species, and on the
+  website ones with no openly licensed photos) used to stop the quiz with an error, especially with **Rare species
+  first**. Now they're taken out of the deck, by the warm-up or as soon as the quiz meets one, and the next species
+  is shown instead. The deck page lists them ("N species taken out"), with links to iNaturalist. Network trouble
+  never takes species out. Local app and website. Database upgrade: migration 8 (`decks.no_photos`).
+- Tests: `tests/test_no_photos.py` (4 tests) and one more browser test.
+
 ## 0.4.7 (2026-11-27) - new decks no longer wait
 
 - Fix: a new deck's species could take minutes to appear (or seem not to arrive at all) when another deck was

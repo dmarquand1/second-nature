@@ -232,6 +232,22 @@ def add_taxa_ids(deck_id: int, taxon_ids: list[int]) -> dict:
     return {"added": added, "not_species": skipped}
 
 
+def drop_no_photo_species(deck_id: int, taxon_id: int) -> None:
+    """Take a species out of a deck because iNaturalist has no research-grade photos of it
+    we can use (rare species often don't), and remember it so the deck page can say so."""
+    with get_conn() as conn:
+        row = conn.execute("SELECT no_photos FROM decks WHERE id = ?", (deck_id,)).fetchone()
+        if not row:
+            return
+        t = conn.execute("SELECT id, name, common_name FROM taxa WHERE id = ?", (taxon_id,)).fetchone()
+        gone = [g for g in json.loads(row["no_photos"] or "[]") if g["id"] != taxon_id]
+        gone.append({"id": taxon_id, "name": t["name"] if t else str(taxon_id), "common_name": t["common_name"] if t else None})
+        conn.execute("UPDATE decks SET no_photos = ? WHERE id = ?", (json.dumps(gone), deck_id))
+        conn.execute("DELETE FROM questions WHERE deck_id = ? AND card_id IN "
+                     "(SELECT id FROM cards WHERE deck_id = ? AND taxon_id = ?)", (deck_id, deck_id, taxon_id))
+        conn.execute("DELETE FROM cards WHERE deck_id = ? AND taxon_id = ?", (deck_id, taxon_id))
+
+
 def remove_cards(deck_id: int, taxon_ids: list[int]) -> int:
     with get_conn() as conn:
         cur = conn.executemany("DELETE FROM cards WHERE deck_id = ? AND taxon_id = ?",
@@ -280,6 +296,7 @@ def delete_deck(deck_id: int) -> None:
 def _deck_summary(conn, row) -> dict:
     d = dict(row)
     d["source_params"] = json.loads(d["source_params"])
+    d["no_photos"] = json.loads(d.get("no_photos") or "[]")
     stats = conn.execute(
         """SELECT COUNT(*) AS n, COALESCE(SUM(correct), 0) AS right FROM reviews WHERE deck_id = ?""",
         (d["id"],),

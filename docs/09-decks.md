@@ -105,3 +105,14 @@ Due reviews always come first; this only changes which *new* species comes next.
 Until you've studied a few species, the relative-based orders have nothing to go
 on and behave like **Mixed up**. Ties are always in random order. Code:
 `order_new` in `app/scheduler.py` and `orderNew` in `static/local/scheduler.js`.
+
+## Species with no usable photos
+
+Some species, usually very rare ones, have no research-grade photos on
+iNaturalist (and on the website, only openly licensed photos can be shown).
+These are taken out of the deck automatically, either by the warm-up after the
+deck is built or as soon as the quiz meets one, and the next species is shown
+instead. The deck page lists them under **"N species taken out"**, with links to
+iNaturalist. If photos appear later, add them again from **Edit deck**. A failed
+connection never takes a species out: only an answer from iNaturalist saying
+there are no usable photos does.

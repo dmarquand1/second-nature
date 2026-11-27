@@ -99,6 +99,12 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 21. Remove species with no research-grade photos
+*Noted 2026-11-27.* Status: **Done (0.4.8)**.
+
+Species with no research-grade images cause problems, especially with rare
+species first. They should be removed from the deck.
+
 ### 20. New decks not getting species
 *Noted 2026-11-27.* Status: **Fixed (0.4.7)**.
 
@@ -172,6 +178,7 @@ delete saved progress. Show the result in Settings.
 
 | Change | Version |
 |---|---|
+| Species with no usable photos taken out of decks | 0.4.8 |
 | New decks no longer wait behind warm-ups (fix) | 0.4.7 |
 | New species order, What's new page | 0.4.6 |
 | "Wrong answers from" deck setting | 0.4.5 |

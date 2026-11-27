@@ -132,12 +132,23 @@ IQ.quiz = (() => {
     const deck = S.get("decks", deckId);
     if (!deck) throw U.error("Deck not found.", 404);
     if (!S.where("cards", (c) => c.deck_id === deckId).length) throw U.error("This deck has no species yet.");
-    const card = Sch.pickNextCard(deckId, { practice });
-    const counts = Sch.queueCounts(deckId);
-    if (!card) return { done: true, counts };
-
-    const obs = await nextObservation(card.taxon_id, deck.place_id, {}, deck.hide_dead !== false, deck.photo_choice || "mixed");
-    if (!obs) throw U.error("No research-grade photos found for this species on iNaturalist.");
+    let card = Sch.pickNextCard(deckId, { practice });
+    let counts = Sch.queueCounts(deckId);
+    // A species with no research-grade photos we can use is taken out of the deck
+    // (the deck page lists them), and the next species is tried instead.
+    let obs = null;
+    for (let i = 0; i < cfg.MAX_NO_PHOTO_SKIPS && !obs; i++) {
+      if (!card) return { done: true, counts };
+      obs = await nextObservation(card.taxon_id, deck.place_id, {}, deck.hide_dead !== false, deck.photo_choice || "mixed");
+      if (obs) break;
+      await IQ.decks.dropNoPhotoSpecies(deckId, card.taxon_id);
+      if (!S.where("cards", (c) => c.deck_id === deckId).length) {
+        throw U.error("None of the species in this deck have research-grade photos we can show.");
+      }
+      card = Sch.pickNextCard(deckId, { practice });
+      counts = Sch.queueCounts(deckId);
+    }
+    if (!obs) throw U.error("No research-grade photos found for these species on iNaturalist.");
     const distractors = await IQ.distractors.pick(card.taxon_id, deck.num_choices - 1,
       { deckId, placeId: deck.place_id, lat: obs.latitude, lng: obs.longitude });
     const choiceIds = U.shuffle([card.taxon_id, ...distractors.map((d) => d.id)]);

@@ -13,7 +13,7 @@ const FakeInat = (() => {
   };
   const HIGHER = { [ORDER]: ["Passeriformes", "order"], [FAMILY]: ["Turdidae", "family"],
                    [GENUS]: ["Turdus", "genus"], [OTHER_GENUS]: ["Erithacus", "genus"] };
-  const state = { calls: [], omitAncestors: false, fail: false };
+  const state = { calls: [], omitAncestors: false, fail: false, noPhotos: new Set() };   // noPhotos: species with no research-grade photos
 
   const taxon = (id, withAncestors) => {
     const [name, common, genus] = SPECIES[id];
@@ -61,7 +61,7 @@ const FakeInat = (() => {
       return { results: [2, 3].filter((t) => t !== tx).map((t) => ({ count: 40, taxon: taxon(t) })) };
     }
     if (path === "/observations") {
-      const ids = params.get("taxon_id").split(",").map(Number).filter((t) => SPECIES[t]);
+      const ids = params.get("taxon_id").split(",").map(Number).filter((t) => SPECIES[t] && !state.noPhotos.has(t));
       let out;
       if (ids.length === 1 && !params.get("taxon_id").includes(",")) out = obs(ids[0]);
       else out = ids.flatMap((t) => obs(t).slice(0, t === 5 ? 2 : 6).map((o) => ({
@@ -84,7 +84,7 @@ const FakeInat = (() => {
     return { status: 200, json: async () => JSON.parse(JSON.stringify(body)), text: async () => JSON.stringify(body) };
   }
 
-  function reset() { state.calls = []; state.omitAncestors = false; state.fail = false; }
+  function reset() { state.calls = []; state.omitAncestors = false; state.fail = false; state.noPhotos = new Set(); }
   const calls = (path) => state.calls.filter((c) => (path instanceof RegExp ? path.test(c.path) : c.path === path));
 
   return { fetcher, reset, calls, state, SPECIES, ORDER, FAMILY, GENUS, OTHER_GENUS };

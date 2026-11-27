@@ -5,6 +5,11 @@
 // newest entry (remembered in this browser only).
 const UPDATES = [
   {
+    version: "0.4.8", date: "27 November 2026", items: [
+      "Species with no research-grade photos on iNaturalist that we can show (often very rare ones) are now taken out of the deck automatically, instead of stopping the quiz. The deck page lists any that were taken out.",
+    ],
+  },
+  {
     version: "0.4.7", date: "27 November 2026", items: [
       "Fixed: a new deck's species could take a long time to appear while another deck was still getting its photos ready. New decks now go first.",
     ],

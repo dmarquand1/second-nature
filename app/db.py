@@ -193,6 +193,10 @@ MIGRATIONS = [
     ALTER TABLE decks ADD COLUMN new_order TEXT NOT NULL DEFAULT 'random';  -- see config.NEW_ORDERS
     ALTER TABLE taxa ADD COLUMN obs_count INTEGER;                          -- observations on iNaturalist (all of it)
     """,
+    # 8: species taken out of a deck because they have no usable photos (version 0.4.8)
+    """
+    ALTER TABLE decks ADD COLUMN no_photos TEXT;   -- JSON list of {id, name, common_name}
+    """,
 ]
 
 

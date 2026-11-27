@@ -20,7 +20,7 @@ IQ.warmup = (() => {
     const cards = cardsInStudyOrder(deckId);
     const total = cards.length;
     const ids = cards.map((c) => c.taxon_id);
-    let failed = 0;
+    let failed = 0, removed = 0;
     try {
       progress(0, total, "Fetching taxonomy for all species", true);
       await IQ.taxa.ensureDetailsMany(ids, o);
@@ -41,6 +41,7 @@ IQ.warmup = (() => {
       try {
         await IQ.taxa.ensureDetails(card.taxon_id, o);
         const obs = await Q.nextObservation(card.taxon_id, deck.place_id, o, deck.hide_dead !== false, deck.photo_choice || "mixed");
+        if (!obs) { await IQ.decks.dropNoPhotoSpecies(deckId, card.taxon_id); removed++; }
         if (obs) {
           await IQ.distractors.prepare(card.taxon_id, deckId, deck.place_id, obs.latitude, obs.longitude,
                                        deck.num_choices - 1, o);
@@ -52,7 +53,7 @@ IQ.warmup = (() => {
       progress(i, total, `Ready: ${i} of ${total} species`);
     }
     progress(total, total, null, true);
-    return { species: total, failed };
+    return { species: total, failed, no_photos: removed };
   });
 
   const start = (deckId) => IQ.jobs.submit("warmup", deckId, {}, true);

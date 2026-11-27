@@ -249,3 +249,7 @@ label.btn { cursor: pointer; }
 .update li { margin: 4px 0; }
 #nav-updates.has-news::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 4px;
   border-radius: 50%; background: var(--wrong); vertical-align: super; }
+
+/* Species taken out of a deck for having no usable photos (deck page) */
+.no-photos { margin: 10px 0; }
+.no-photos summary { cursor: pointer; }

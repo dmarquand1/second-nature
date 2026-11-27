@@ -28,6 +28,7 @@ IQ.config = {
   // Where wrong answers come from (deck setting, see app/config.py ANSWER_SOURCES).
   ANSWER_SOURCES: ["anywhere", "mostly_deck", "deck"],
   // The order new species are introduced in (deck setting, see app/config.py NEW_ORDERS).
+  MAX_NO_PHOTO_SKIPS: 10,            // species without usable photos one question may skip (and take out)
   NEW_ORDERS: ["random", "added", "common", "rare", "hard", "easy", "grouped", "varied"],
   DESIRED_RETENTION: 0.9,
   DEFAULT_NEW_PER_DAY: 20,

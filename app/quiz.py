@@ -191,13 +191,24 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
             raise QuizError("This deck has no species yet.")
         card = pick_next_card(conn, deck_id, rng, practice=practice)
         counts = queue_counts(conn, deck_id)
-    if not card:
-        # Nothing due and no new cards left today.
-        return {"done": True, "counts": counts}
-
-    obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])
-    if not obs:
-        raise QuizError("No research-grade photos found for this species on iNaturalist.")
+    # A species with no research-grade photos we can use is taken out of the deck
+    # (the deck page lists them), and the next species is tried instead.
+    for _ in range(config.MAX_NO_PHOTO_SKIPS):
+        if not card:
+            # Nothing due and no new cards left today.
+            return {"done": True, "counts": counts}
+        obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])
+        if obs:
+            break
+        from .decks import drop_no_photo_species
+        drop_no_photo_species(deck_id, card["taxon_id"])
+        with get_conn() as conn:
+            if not conn.execute("SELECT 1 FROM cards WHERE deck_id = ?", (deck_id,)).fetchone():
+                raise QuizError("None of the species in this deck have research-grade photos we can show.")
+            card = pick_next_card(conn, deck_id, rng, practice=practice)
+            counts = queue_counts(conn, deck_id)
+    else:
+        raise QuizError("No research-grade photos found for these species on iNaturalist.")
     n_wrong = deck["num_choices"] - 1
     distractors = pick_distractors(card["taxon_id"], n_wrong, deck_id=deck_id, place_id=deck["place_id"],
                                    lat=obs["latitude"], lng=obs["longitude"], rng=rng)

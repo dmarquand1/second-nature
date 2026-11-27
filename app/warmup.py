@@ -39,7 +39,7 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
     cards = _cards_in_study_order(deck_id)
     total = len(cards)
     progress(0, total, "Getting photos and look-alikes ready", force=True)
-    failed = 0
+    failed = removed = 0
     ids = [c["taxon_id"] for c in cards]
     # Batched first: taxonomy for 30 species per request, photo pools for 10 per request.
     try:
@@ -60,6 +60,10 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
         try:
             ensure_details(card["taxon_id"])
             obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])
+            if not obs:
+                from .decks import drop_no_photo_species
+                drop_no_photo_species(deck_id, card["taxon_id"])
+                removed += 1
             if obs:
                 prepare_candidates(card["taxon_id"], deck_id, deck["place_id"],
                                    obs["latitude"], obs["longitude"], needed=deck["num_choices"] - 1)
@@ -70,7 +74,7 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
             failed += 1
         progress(i, total, f"Ready: {i} of {total} species")
     progress(total, total, force=True)
-    return {"species": total, "failed": failed}
+    return {"species": total, "failed": failed, "no_photos": removed}
 
 
 def start(deck_id: int) -> int:

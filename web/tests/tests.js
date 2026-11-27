@@ -372,6 +372,29 @@ test("a new deck is built straight away, even while another deck is warming up",
   eq((await api2("GET", `/api/decks/${b.id}`)).num_cards, 1);
 });
 
+test("species with no research-grade photos are taken out of the deck", async () => {
+  FakeInat.state.noPhotos = new Set([7]);                     // the Nightingale (rarest) has none
+  const all = ["Turdus merula", "Song Thrush", "Mistle Thrush", "Redwing", "Fieldfare", "European Robin", "Common Nightingale"];
+  const d = await listDeck(all, { new_order: "rare" });
+  const after = await api2("GET", `/api/decks/${d.id}`);
+  eq(after.num_cards, 6, "taken out by the warm-up");
+  eq(after.no_photos.map((t) => t.name), ["Luscinia megarhynchos"]);
+  // Found while studying: skipped, taken out, and the next species is shown instead.
+  const e = await listDeck(["Turdus merula", "Common Nightingale"], { new_order: "rare" });
+  const q = await api2("GET", `/api/decks/${e.id}/next`);
+  eq(IQ.store.get("cards", IQ.store.get("questions", q.question_id).card_id).taxon_id, 1);
+  eq((await api2("GET", `/api/decks/${e.id}`)).num_cards, 1);
+  // Network trouble never takes species out.
+  FakeInat.state.noPhotos = new Set();
+  const f = await listDeck(["Turdus merula", "Song Thrush"]);
+  await IQ.store.remove("observations", IQ.store.all("observations").map((o) => o.id));
+  await IQ.store.trimCache(0, 0);
+  FakeInat.state.fail = true;
+  await throws(api2("GET", `/api/decks/${f.id}/next`));
+  FakeInat.state.fail = false;
+  eq((await api2("GET", `/api/decks/${f.id}`)).num_cards, 2, "nothing taken out when offline");
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();

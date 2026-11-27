@@ -28,6 +28,12 @@ async function DeckDetailView(deckId) {
       </div>
     </div>
     <div id="job-box">${buildJob ? jobResultHtml(buildJob) : ""}</div>
+    ${(d.no_photos || []).length ? `<details class="card no-photos" id="no-photos">
+      <summary>${d.no_photos.length} species taken out: no research-grade photos on iNaturalist that can be shown</summary>
+      <p class="small muted">Usually very rare species, or ones whose photos aren't openly licensed. If that changes,
+        add them again from <b>Edit deck</b>.</p>
+      <p class="small">${d.no_photos.map((t) => `<a href="https://www.inaturalist.org/taxa/${t.id}" target="_blank" rel="noopener">${esc(t.common_name ? `${t.common_name} (${t.name})` : t.name)}</a>`).join(", ")}</p>
+    </details>` : ""}
     <div class="row between wrap list-tools">
       <input id="filter" type="search" placeholder="Search ${d.num_cards} species…" autocomplete="off">
       <select id="sort">

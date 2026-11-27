@@ -32,6 +32,7 @@ def taxon_obj(tid):
 class FakeClient:
     def __init__(self):
         self.calls = []
+        self.no_photos = set()
 
     def _log(self, name, **kw):
         self.calls.append((name, kw))
@@ -97,6 +98,8 @@ class FakeClient:
         return self._obs(taxon_id)
 
     def _obs(self, taxon_id):
+        if taxon_id in self.no_photos:      # a species with no research-grade photos
+            return []
         return [
             {"id": taxon_id * 1000 + i, "uri": f"https://www.inaturalist.org/observations/{taxon_id * 1000 + i}",
              "observed_on": "2025-05-0%d" % (i + 1), "place_guess": "Oxford, UK", "location": "51.75,-1.25",
