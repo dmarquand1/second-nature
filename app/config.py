@@ -1,0 +1,30 @@
+"""App settings. Override any of these with environment variables if needed."""
+import os
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = Path(os.environ.get("INAT_QUIZ_DATA_DIR", ROOT_DIR / "data"))
+DB_PATH = Path(os.environ.get("INAT_QUIZ_DB", DATA_DIR / "inat_quiz.db"))
+STATIC_DIR = ROOT_DIR / "static"
+
+INAT_API_BASE = "https://api.inaturalist.org/v1"
+# iNaturalist asks API users to stay at or below ~1 request per second.
+INAT_MIN_SECONDS_BETWEEN_REQUESTS = float(os.environ.get("INAT_RATE_LIMIT_SECONDS", "1.0"))
+INAT_USER_AGENT = "inat-quiz-local/0.1 (personal species ID practice tool)"
+INAT_TIMEOUT_SECONDS = 30.0
+
+# How long cached API responses stay fresh, in seconds.
+CACHE_TTL = {
+    "taxa": 30 * 24 * 3600,
+    "places": 30 * 24 * 3600,
+    "similar_species": 14 * 24 * 3600,
+    "species_counts": 7 * 24 * 3600,
+    "observations": 3 * 24 * 3600,
+    "default": 24 * 3600,
+}
+
+# Quiz defaults
+DEFAULT_NUM_CHOICES = 5          # allowed range 4-6
+MAX_PHOTOS_PER_QUESTION = 4
+OBSERVATIONS_PER_TAXON = 50      # size of the photo pool fetched per species
+NEARBY_RADIUS_KM = 100           # "co-occurring in the region" radius

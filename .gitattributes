@@ -1,0 +1,5 @@
+# Keep line endings consistent between Windows and Linux/Mac
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
