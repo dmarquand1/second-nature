@@ -21,6 +21,9 @@ async function SettingsView() {
         <label class="btn">Restore from a backup… <input type="file" id="restore" accept=".json,application/json" hidden></label>
       </div>
       <p class="muted small">Restoring replaces everything in this browser with what's in the file.</p>
+      <p class="muted small" id="persist-note">${IQ.persisted
+        ? "This browser has agreed to keep your progress permanently (it won't clear it to save space)."
+        : "This browser may clear saved data if space runs low or you don't visit for a while (Safari: 7 days), so keep a backup."}</p>
     </section>
 
     <section class="card">

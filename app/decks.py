@@ -185,7 +185,8 @@ def _validate_source(source_type: str, params: dict) -> None:
 
 
 def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
-                description: str | None = None, new_per_day: int = config.DEFAULT_NEW_PER_DAY) -> dict:
+                description: str | None = None, new_per_day: int = config.DEFAULT_NEW_PER_DAY,
+                hide_dead: bool = True) -> dict:
     """Create the deck straight away and find its species in the background."""
     _validate_source(source_type, params)
     num_choices = max(4, min(int(num_choices), 6))
@@ -195,10 +196,11 @@ def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO decks (name, description, source_type, source_params, place_id, place_name,
-                                  num_choices, new_per_day, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                  num_choices, new_per_day, hide_dead, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (name.strip() or "Untitled deck", description, source_type, json.dumps(stored),
-             params.get("place_id"), params.get("place_name"), num_choices, int(new_per_day), time.time()),
+             params.get("place_id"), params.get("place_name"), num_choices, int(new_per_day),
+             1 if hide_dead else 0, time.time()),
         )
         deck_id = cur.lastrowid
     job_id = jobs.submit("build", deck_id, {"source_type": source_type, **params})
@@ -237,7 +239,7 @@ def remove_cards(deck_id: int, taxon_ids: list[int]) -> int:
 def update_settings(deck_id: int, name: str | None = None, num_choices: int | None = None,
                     new_per_day: int | None = None, description: str | None = None,
                     place_id: int | None = None, place_name: str | None = None,
-                    clear_place: bool = False) -> None:
+                    clear_place: bool = False, hide_dead: bool | None = None) -> None:
     with get_conn() as conn:
         if name is not None and name.strip():
             conn.execute("UPDATE decks SET name = ? WHERE id = ?", (name.strip(), deck_id))
@@ -247,6 +249,8 @@ def update_settings(deck_id: int, name: str | None = None, num_choices: int | No
             conn.execute("UPDATE decks SET num_choices = ? WHERE id = ?", (max(4, min(num_choices, 6)), deck_id))
         if new_per_day is not None:
             conn.execute("UPDATE decks SET new_per_day = ? WHERE id = ?", (max(0, new_per_day), deck_id))
+        if hide_dead is not None:
+            conn.execute("UPDATE decks SET hide_dead = ? WHERE id = ?", (1 if hide_dead else 0, deck_id))
         if clear_place:
             conn.execute("UPDATE decks SET place_id = NULL, place_name = NULL WHERE id = ?", (deck_id,))
         elif place_id is not None:

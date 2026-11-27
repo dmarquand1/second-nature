@@ -45,6 +45,14 @@ def photo_sizes(url: str) -> dict:
             "original": local_url(_photo_url(url, "original"))}
 
 
+def is_dead(o: dict) -> bool:
+    """True if the community annotated this observation "Alive or Dead: Dead"
+    (e.g. roadkill, a dead bird on the beach, pinned insects)."""
+    return any(a.get("controlled_attribute_id") == config.ALIVE_OR_DEAD_TERM
+               and a.get("controlled_value_id") == config.DEAD_VALUE
+               for a in o.get("annotations") or [])
+
+
 def _store_observations(conn, taxon_id: int, results: list[dict], pool_place_id) -> None:
     now = time.time()
     for o in results:
@@ -63,14 +71,16 @@ def _store_observations(conn, taxon_id: int, results: list[dict], pool_place_id)
                 pass
         conn.execute(
             """INSERT INTO observations (id, taxon_id, obs_taxon_id, photos, latitude, longitude, obscured,
-                    positional_accuracy, place_guess, observed_on, observer, uri, pool_place_id, fetched_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    positional_accuracy, place_guess, observed_on, observer, uri, pool_place_id, fetched_at, dead)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET photos = excluded.photos, fetched_at = excluded.fetched_at,
+                   dead = excluded.dead,
                    pool_place_id = COALESCE(excluded.pool_place_id, observations.pool_place_id)""",
             (o["id"], taxon_id, (o.get("taxon") or {}).get("id"), json.dumps(photos), lat, lng,
              1 if o.get("obscured") else 0, o.get("positional_accuracy"), o.get("place_guess"),
              o.get("observed_on"), (o.get("user") or {}).get("login"),
-             o.get("uri") or f"https://www.inaturalist.org/observations/{o['id']}", pool_place_id, now),
+             o.get("uri") or f"https://www.inaturalist.org/observations/{o['id']}", pool_place_id, now,
+             1 if is_dead(o) else 0),
         )
 
 
@@ -79,8 +89,19 @@ def observation_pool(taxon_id: int, place_id: int | None) -> list:
     Prefers the deck's place; falls back to worldwide if it has too few."""
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM observations WHERE taxon_id = ?", (taxon_id,)).fetchall()
-    local = [r for r in rows if place_id and r["pool_place_id"] == place_id]
     client = get_client()
+    # Photos saved before version 0.4.1 don't say whether the organism is dead yet:
+    # look them up again once (usually straight from the cache).
+    unchecked = {r["pool_place_id"] for r in rows if r["dead"] is None}
+    if unchecked:
+        for pid in unchecked:
+            results = client.observations(taxon_id, place_id=pid, per_page=config.OBSERVATIONS_PER_TAXON)
+            with get_conn() as conn:
+                _store_observations(conn, taxon_id, results, pid)
+        with get_conn() as conn:
+            conn.execute("UPDATE observations SET dead = 0 WHERE taxon_id = ? AND dead IS NULL", (taxon_id,))
+            rows = conn.execute("SELECT * FROM observations WHERE taxon_id = ?", (taxon_id,)).fetchall()
+    local = [r for r in rows if place_id and r["pool_place_id"] == place_id]
     fetched = False
     if place_id and not local:
         # Cached API call, so repeating this is cheap.
@@ -137,9 +158,12 @@ def _obs_order(r) -> tuple:
     return (r["times_shown"], (r["id"] * 2654435761) % 4294967296)
 
 
-def next_observation(taxon_id: int, place_id: int | None) -> dict | None:
-    """The observation that will be shown next for this species."""
+def next_observation(taxon_id: int, place_id: int | None, hide_dead: bool = True) -> dict | None:
+    """The observation that will be shown next for this species.
+    With hide_dead, observations annotated as dead are skipped (unless that's all there is)."""
     candidates = observation_pool(taxon_id, place_id)
+    if hide_dead:
+        candidates = [r for r in candidates if not r["dead"]] or candidates
     return dict(min(candidates, key=_obs_order)) if candidates else None
 
 
@@ -157,7 +181,7 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
         # Nothing due and no new cards left today.
         return {"done": True, "counts": counts}
 
-    obs = next_observation(card["taxon_id"], deck["place_id"])
+    obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]))
     if not obs:
         raise QuizError("No research-grade photos found for this species on iNaturalist.")
     n_wrong = deck["num_choices"] - 1

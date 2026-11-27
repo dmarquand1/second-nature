@@ -174,6 +174,11 @@ MIGRATIONS = [
     CREATE INDEX IF NOT EXISTS idx_taxa_name ON taxa(name COLLATE NOCASE);
     CREATE INDEX IF NOT EXISTS idx_taxa_common ON taxa(common_name COLLATE NOCASE);
     """,
+    # 4: hide photos of dead organisms (version 0.4.1)
+    """
+    ALTER TABLE decks ADD COLUMN hide_dead INTEGER NOT NULL DEFAULT 1;   -- 1 = skip observations annotated "Dead"
+    ALTER TABLE observations ADD COLUMN dead INTEGER;                    -- 1 dead, 0 alive/unknown, NULL = not checked yet
+    """,
 ]
 
 

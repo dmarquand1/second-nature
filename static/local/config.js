@@ -23,6 +23,9 @@ IQ.config = {
   DESIRED_RETENTION: 0.9,
   DEFAULT_NEW_PER_DAY: 20,
   DAY_STARTS_AT_HOUR: 4,
+  // iNaturalist's "Alive or Dead" annotation (controlled term 17; value 19 = Dead).
+  ALIVE_OR_DEAD_TERM: 17,
+  DEAD_VALUE: 19,
   // Daily request budget per browser. iNaturalist asks API users to stay well under
   // 10,000 requests a day; background work (warm-up, building big decks) stops at the
   // lower number so there's always room left for studying.

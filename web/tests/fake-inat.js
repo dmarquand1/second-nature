@@ -31,6 +31,8 @@ const FakeInat = (() => {
     id: tid * 1000 + i, uri: `https://www.inaturalist.org/observations/${tid * 1000 + i}`,
     observed_on: `2025-05-0${i + 1}`, place_guess: "Oxford, UK", location: "51.75,-1.25", obscured: false,
     positional_accuracy: 20, user: { login: "tester" }, taxon: { id: tid },
+    // The first observation of each species is annotated "Alive or Dead: Dead".
+    annotations: [{ controlled_attribute_id: 17, controlled_value_id: i === 0 ? 19 : 18 }],
     photos: [0, 1].map((p) => ({ url: `https://inaturalist-open-data.s3.amazonaws.com/photos/${tid}${i}${p}/square.jpg`,
       attribution: "(c) tester, CC BY", license_code: tid === 7 && p === 1 ? null : "cc-by" })),
   }));

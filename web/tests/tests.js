@@ -259,6 +259,28 @@ test("daily request limit: background stops first, studying keeps a reserve", as
   } finally { [IQ.config.DAILY_REQUEST_LIMIT, IQ.config.DAILY_BACKGROUND_LIMIT] = lim; IQ.settings.set("requests", null); }
 });
 
+test("dead organisms: hidden by default, can be shown", async () => {
+  const d = await listDeck(["Turdus merula"]);
+  eq(d.hide_dead, true);
+  const dead = new Set(IQ.store.where("observations", (o) => o.dead === 1).map((o) => o.id));
+  ok(dead.size > 0, "dead annotation read");
+  const shown = async (n) => {
+    const ids = new Set();
+    for (let i = 0; i < n; i++) {
+      const q = await api2("GET", `/api/decks/${d.id}/next?practice=true`);
+      ids.add(IQ.store.get("questions", q.question_id).observation_id);
+    }
+    return ids;
+  };
+  ok(![...(await shown(12))].some((id) => dead.has(id)), "a dead one was shown");
+  // Photos saved by version 0.4.0 have no dead flag: they're checked again once.
+  await IQ.store.putMany("observations", IQ.store.where("observations", () => true).map((o) => { const c = { ...o }; delete c.dead; return c; }));
+  ok(![...(await shown(6))].some((id) => dead.has(id)), "old photos were checked");
+  eq(IQ.store.where("observations", (o) => o.dead == null).length, 0);
+  eq((await api2("PATCH", `/api/decks/${d.id}`, { hide_dead: false })).hide_dead, false);
+  ok([...(await shown(12))].some((id) => dead.has(id)), "dead ones should come round when allowed");
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();
@@ -308,6 +330,7 @@ test.live("open-licence photos come from the open-data server", async () => {
   const photos = obs.flatMap((o) => o.photos);
   ok(photos.some((p) => IQ.config.OPEN_LICENCES.includes(p.license_code)), "no open-licence photos");
   ok(photos.some((p) => p.url.includes("inaturalist-open-data")), "photos not on the open-data server");
+  ok(obs.every((o) => Array.isArray(o.annotations)), "observations don't include annotations (needed to hide dead ones)");
 });
 
 test.live("look-alike lookups work", async () => {

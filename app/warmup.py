@@ -52,7 +52,7 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
     for i, card in enumerate(cards, start=1):
         try:
             ensure_details(card["taxon_id"])
-            obs = next_observation(card["taxon_id"], deck["place_id"])
+            obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]))
             if obs:
                 gather_candidates(card["taxon_id"], deck_id, deck["place_id"],
                                   obs["latitude"], obs["longitude"], needed=deck["num_choices"] - 1)

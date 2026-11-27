@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 (2026-11-27) - hide dead organisms
+
+- **Hide photos of dead organisms**: new deck setting (on by default, New deck and Edit pages) that skips
+  observations iNaturalist users annotated "Alive or Dead: Dead". Works in the local app and the website.
+  Photos saved by earlier versions are checked once. Database upgrade: migration 4 (`decks.hide_dead`,
+  `observations.dead`); nothing to delete.
+- `python run.py` explains in plain words when the app is already running, instead of "[Errno 10048]".
+- Website: asks the browser to keep saved progress permanently, and Settings says whether it agreed.
+- Tests: `tests/test_dead.py` (6 tests) and one more browser test; live checks confirm iNaturalist sends annotations.
+
 ## 0.4.0 (2026-11-27) - website version
 
 - **New name: Second Nature** ("learn to identify species until it's second nature"), replacing "iNat Quiz" so the

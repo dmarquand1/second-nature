@@ -83,6 +83,7 @@ website screens.
 | `test_images.py` | Photo cache: allowed hosts only, download once, trimming, local URLs |
 | `test_stats.py` | Totals, streak, daily, states, forecast, struggles, mix-ups, per deck; mix-ups feeding the look-alikes |
 | `test_polish.py` | Licences, cache URLs, interrupted jobs after restart, version info (same everywhere), `/play/` pages served |
+| `test_dead.py` | Reading the "Alive or Dead" annotation, dead photos hidden by default, shown when the setting is off, a question even if all photos are dead, setting via the API, photos from older versions checked once |
 | `test_web.py` + `web/tests/tests.js` | **Website version**: FSRS gives the same numbers as Python, name cleaning, list/taxon decks with report, edit and delete, questions with photos straight from iNaturalist, look-alikes, answer and re-rate rules, daily limit and practice, prepared-ahead questions differ, batched warm-up, cache (repeats, two at once, offline fallback), quiz requests first, open-licence filter and credit with each photo, daily request budget, stats, backup and restore; click-through with backup download |
 | `test_ui.py` | Browser: build progress and report, deck search, quiz "next" is instant, zoom (and keys don't leak to the quiz), edit page, stats page, `?` help |
 

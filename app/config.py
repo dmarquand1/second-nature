@@ -44,6 +44,10 @@ IMAGE_HOSTS = (
     "www.inaturalist.org",
 )
 
+# iNaturalist's "Alive or Dead" annotation (controlled term 17; value 19 = Dead)
+ALIVE_OR_DEAD_TERM = 17
+DEAD_VALUE = 19
+
 # Big lists
 MAX_DECK_SPECIES = 5000
 

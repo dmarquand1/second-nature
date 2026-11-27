@@ -97,6 +97,27 @@ GitHub Pages. The local app keeps working.
 The website version doesn't copy photos (they load from iNaturalist) and uses
 open-licence photos only by default, switchable in Settings.
 
+## Shipped in v0.4.1
+
+### 14. Hide photos of dead organisms
+*Requested 2026-11-27.* Status: **Done (0.4.1)**. See [09 Decks](09-decks.md#hiding-photos-of-dead-organisms).
+
+A deck setting, on by default, that skips observations annotated "Dead" on iNaturalist.
+
+### 12. Friendlier message when the app is already running
+*Noted 2026-11-27.* Status: **Done (0.4.1)**.
+
+`python run.py` shows a confusing "[Errno 10048] error while attempting to bind"
+when another copy is already using port 8000. It should say so in plain words
+and suggest stopping the other copy or using `--port 8001`.
+
+### 13. Ask the browser to keep progress permanently
+*Noted 2026-11-27.* Status: **Done (0.4.1)**.
+
+Call `navigator.storage.persist()` in the website version, so the browser
+(especially Safari, which can clear sites unused for 7 days) is less likely to
+delete saved progress. Show the result in Settings.
+
 ## Open
 
 Nothing yet. Add new requests here.
@@ -105,6 +126,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Hide dead organisms, plain "already running" message, keep browser progress | 0.4.1 |
 | Website version (browser only, GitHub Pages, backup, open-licence photos) | 0.4.0 |
 | Batched lookups, medium photos first, live checks, skip blocked browser tests | 0.3.1 |
 | Faster loading, offline photos, big lists, edit deck, stats, zoom, polish, tests | 0.3.0 |

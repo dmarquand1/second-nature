@@ -24,6 +24,10 @@ IQ.quiz = (() => {
   // The photos of an observation we're allowed to show with the current setting.
   const usablePhotos = (obs) => (obs.photos || []).filter((p) => !IQ.settings.openLicenceOnly() || isOpen(p.license));
 
+  // True if the community annotated this observation "Alive or Dead: Dead".
+  const isDead = (o) => (o.annotations || []).some((a) =>
+    a.controlled_attribute_id === cfg.ALIVE_OR_DEAD_TERM && a.controlled_value_id === cfg.DEAD_VALUE);
+
   async function storeObservations(taxonId, results, poolPlaceId) {
     const now = U.now();
     const recs = [];
@@ -42,7 +46,7 @@ IQ.quiz = (() => {
         obscured: o.obscured ? 1 : 0, positional_accuracy: o.positional_accuracy ?? null, place_guess: o.place_guess ?? null,
         observed_on: o.observed_on ?? null, observer: (o.user || {}).login ?? null,
         uri: o.uri || `https://www.inaturalist.org/observations/${o.id}`,
-        pool_place_id: poolPlaceId ?? old?.pool_place_id ?? null,
+        pool_place_id: poolPlaceId ?? old?.pool_place_id ?? null, dead: isDead(o) ? 1 : 0,
         times_shown: old?.times_shown ?? 0, last_shown: old?.last_shown ?? null, fetched_at: now,
       });
     }
@@ -55,6 +59,17 @@ IQ.quiz = (() => {
   // Prefers the deck's place; falls back to worldwide if it has too few.
   async function observationPool(taxonId, placeId, o = {}) {
     let rows = storedFor(taxonId);
+    // Photos saved before version 0.4.1 don't say whether the organism is dead yet:
+    // look them up again once (usually straight from the cache).
+    const unchecked = new Set(rows.filter((r) => r.dead == null).map((r) => r.pool_place_id ?? null));
+    for (const pid of unchecked) {
+      await storeObservations(taxonId, await IQ.inat.observations(taxonId, pid, cfg.OBSERVATIONS_PER_TAXON, o), pid);
+    }
+    if (unchecked.size) {
+      const left = S.where("observations", (r) => r.taxon_id === taxonId && r.dead == null).map((r) => ({ ...r, dead: 0 }));
+      await S.putMany("observations", left);
+      rows = storedFor(taxonId);
+    }
     let local = rows.filter((r) => placeId && r.pool_place_id === placeId);
     let fetched = false;
     if (placeId && !local.length) {
@@ -97,8 +112,10 @@ IQ.quiz = (() => {
     }
     return best;
   }
-  async function nextObservation(taxonId, placeId, o = {}) {
-    const c = await observationPool(taxonId, placeId, o);
+  // With hideDead, observations annotated as dead are skipped (unless that's all there is).
+  async function nextObservation(taxonId, placeId, o = {}, hideDead = true) {
+    let c = await observationPool(taxonId, placeId, o);
+    if (hideDead) { const alive = c.filter((r) => !r.dead); if (alive.length) c = alive; }
     return c.length ? minObs(c) : null;
   }
 
@@ -110,7 +127,7 @@ IQ.quiz = (() => {
     const counts = Sch.queueCounts(deckId);
     if (!card) return { done: true, counts };
 
-    const obs = await nextObservation(card.taxon_id, deck.place_id);
+    const obs = await nextObservation(card.taxon_id, deck.place_id, {}, deck.hide_dead !== false);
     if (!obs) throw U.error("No research-grade photos found for this species on iNaturalist.");
     const distractors = await IQ.distractors.pick(card.taxon_id, deck.num_choices - 1,
       { deckId, placeId: deck.place_id, lat: obs.latitude, lng: obs.longitude });
@@ -191,6 +208,6 @@ IQ.quiz = (() => {
     return { rating, due: after.due, state: after.state, previous_state: review.card_before.state };
   }
 
-  return { licenceInfo, photoUrl, photoSizes, usablePhotos, storeObservations, observationPool, fillPoolsBatched,
+  return { isDead, licenceInfo, photoUrl, photoSizes, usablePhotos, storeObservations, observationPool, fillPoolsBatched,
            nextObservation, nextQuestion, answer, rate, ratingPreviews, fmtSeconds };
 })();

@@ -100,6 +100,8 @@ class FakeClient:
             {"id": taxon_id * 1000 + i, "uri": f"https://www.inaturalist.org/observations/{taxon_id * 1000 + i}",
              "observed_on": "2025-05-0%d" % (i + 1), "place_guess": "Oxford, UK", "location": "51.75,-1.25",
              "obscured": False, "positional_accuracy": 20, "user": {"login": "tester"}, "taxon": {"id": taxon_id},
+             # The first observation of each species is annotated "Alive or Dead: Dead".
+             "annotations": [{"controlled_attribute_id": 17, "controlled_value_id": 19 if i == 0 else 18}],
              "photos": [{"url": f"https://inaturalist-open-data.s3.amazonaws.com/photos/{taxon_id}{i}{p}/square.jpg", "attribution": "(c) tester, CC BY",
                          "license_code": "cc-by"} for p in range(2)]}
             for i in range(6)

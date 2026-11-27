@@ -10,7 +10,7 @@ from . import config, decks, images, jobs, quiz, stats, warmup
 from .db import init_db
 from .inat_client import InatError, get_client
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ class DeckCreate(BaseModel):
     limit: int = Field(default=30, ge=2, le=config.MAX_DECK_SPECIES)
     num_choices: int = Field(default=config.DEFAULT_NUM_CHOICES, ge=4, le=6)
     new_per_day: int = Field(default=config.DEFAULT_NEW_PER_DAY, ge=0, le=500)
+    hide_dead: bool = True
     description: str | None = None
 
 
@@ -49,6 +50,7 @@ class DeckSettings(BaseModel):
     place_id: int | None = None
     place_name: str | None = None
     clear_place: bool = False
+    hide_dead: bool | None = None
 
 
 class SpeciesAdd(BaseModel):
@@ -103,10 +105,11 @@ def list_decks():
 
 @app.post("/api/decks")
 def create_deck(body: DeckCreate):
-    params = body.model_dump(exclude={"name", "source_type", "num_choices", "new_per_day", "description"},
+    params = body.model_dump(exclude={"name", "source_type", "num_choices", "new_per_day", "description",
+                                      "hide_dead"},
                              exclude_none=True)
     return _inat_guard(decks.create_deck, body.name, body.source_type, params,
-                       num_choices=body.num_choices, new_per_day=body.new_per_day,
+                       num_choices=body.num_choices, new_per_day=body.new_per_day, hide_dead=body.hide_dead,
                        description=body.description)
 
 

@@ -45,9 +45,10 @@ practical checklist, not legal advice.
    donations buttons or sponsored versions without revisiting the photo licences.
 3. **iNaturalist's Terms of Use**: checked (table above). Re-read them now and
    then: https://www.inaturalist.org/pages/terms
-4. **Your employer.** If you build this on a work computer or in work time,
-   check your employer's rules on personal projects and publishing first, and
-   publish from your personal GitHub account.
+4. **Your employer.** Employers' IP policies can claim work done outside work
+   hours if it relates to your job, and may require you to report it and get
+   consent before publishing. Check yours, and **get written permission before
+   making the repository public or publishing the website**.
 5. **If it gets popular**, tell iNaturalist about it (their forum or help pages)
    so they know where the traffic comes from.
 6. **Optional: a licence for your own code** (e.g. MIT) if you want others to be

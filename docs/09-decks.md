@@ -48,3 +48,17 @@ Deck page > **Edit deck**:
 | Add species | Search iNaturalist and click a result to add it; or paste names; or load a .txt/.csv file. |
 | Species | Filter, tick species (or "Select all shown"), **Remove selected**. Removing deletes that species' history in this deck. |
 | Delete deck | Deletes the deck and all its history. |
+
+## Hiding photos of dead organisms
+
+iNaturalist users can annotate an observation **Alive or Dead: Dead** (roadkill,
+a bird found dead, pinned insects, shed skins). Each deck has a setting,
+**Hide photos of dead organisms**, on the New deck and Edit pages. It's **on by
+default**: those observations are skipped and the next photo is used instead.
+
+* Only observations someone has annotated are recognised, so an occasional
+  un-annotated dead one can still appear.
+* If every photo of a species is annotated dead, one is shown anyway rather than
+  leaving the species out.
+* Photos saved by earlier versions are checked once, the first time each species
+  comes up (usually from the saved iNaturalist answers, so no extra waiting).

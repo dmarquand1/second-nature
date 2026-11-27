@@ -91,6 +91,6 @@ def test_migration_upgrades_old_database(tmp_path, monkeypatch):
     db.init_db()
     db.init_db()  # running twice is safe
     with db.get_conn() as c:
-        assert c.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert c.execute("PRAGMA user_version").fetchone()[0] == len(db.MIGRATIONS)
         assert c.execute("SELECT new_per_day FROM decks").fetchone()[0] == 20
         assert c.execute("SELECT state FROM cards").fetchone()[0] == 0

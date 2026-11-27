@@ -38,6 +38,12 @@ so you never need to delete `data/inat_quiz.db` when updating.
 
 Photos are not in the database: they're files in `data/images/` (see [08](08-speed-and-offline.md)).
 
+## Version 0.4.1 (migration 4)
+
+* `decks.hide_dead`: 1 (default) skips observations annotated "Alive or Dead: Dead".
+* `observations.dead`: 1 if annotated dead, 0 if not, empty for photos saved
+  before 0.4.1 (checked again the next time the species comes up).
+
 ## Ready for stats (step 7)
 
 `reviews` records every answer with time, rating, response time, what you

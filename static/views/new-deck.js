@@ -50,6 +50,8 @@ function NewDeckView() {
           <select name="num_choices"><option>4</option><option selected>5</option><option>6</option></select>
         </label>
       </div>
+      <label class="check"><input type="checkbox" name="hide_dead" checked>
+        Hide photos of dead organisms (observations that iNaturalist users tagged "Dead")</label>
 
       <button class="btn primary" type="submit">Create deck</button>
       <p id="form-status" class="muted"></p>
@@ -113,6 +115,7 @@ function NewDeckView() {
       limit: +form.limit.value,
       num_choices: +form.num_choices.value,
       new_per_day: +form.new_per_day.value,
+      hide_dead: form.hide_dead.checked,
     };
     if (type === "list") body.species = form.species.value.split("\n").map((s) => s.trim()).filter(Boolean);
     if (taxon && type !== "list") { body.taxon_id = taxon.id; body.taxon_name = taxon.common_name || taxon.name; }

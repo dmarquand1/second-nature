@@ -59,6 +59,8 @@ def test_observations_have_photos_location_and_licence(live, blackbird):
     assert "attribution" in o["photos"][0] and "license_code" in o["photos"][0]
     assert o.get("location") and o.get("observed_on")
     assert images.allowed(o["photos"][0]["url"].replace("square", "medium"))
+    # Annotations (e.g. "Alive or Dead") come with each observation, so dead ones can be hidden.
+    assert all(isinstance(x.get("annotations"), list) for x in obs)
 
 
 def test_batched_observations_cover_several_species(live, blackbird):

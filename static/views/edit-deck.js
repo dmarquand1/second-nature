@@ -24,6 +24,8 @@ async function EditDeckView(deckId) {
         <label>Choices per question
           <select id="e-choices">${[4, 5, 6].map((n) => `<option ${n === d.num_choices ? "selected" : ""}>${n}</option>`).join("")}</select></label>
       </div>
+      <label class="check"><input type="checkbox" id="e-hide-dead" ${d.hide_dead === 0 || d.hide_dead === false ? "" : "checked"}>
+        Hide photos of dead organisms (observations that iNaturalist users tagged "Dead")</label>
       <div>
         <label>Focus place (photos and look-alikes come from here)
           <input id="place-q" autocomplete="off" placeholder="Search a place, or leave empty for worldwide">
@@ -87,6 +89,7 @@ async function EditDeckView(deckId) {
       description: document.getElementById("e-desc").value,
       new_per_day: +document.getElementById("e-new").value,
       num_choices: +document.getElementById("e-choices").value,
+      hide_dead: document.getElementById("e-hide-dead").checked,
     };
     if (place && place.id !== d.place_id) Object.assign(body, { place_id: place.id, place_name: place.name });
     if (!place && d.place_id) body.clear_place = true;

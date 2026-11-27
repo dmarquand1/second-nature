@@ -1,10 +1,13 @@
 // The website version's "backend": the screens call the same /api/... addresses
 // as the local app, and this answers them inside the browser instead of a server.
 // (static/api.js sends requests here when IQ.router exists.)
-IQ.VERSION = "0.4.0";
+IQ.VERSION = "0.4.1";
 
 IQ.ready = (async () => {
   await IQ.store.open();
+  // Ask the browser to keep saved progress even when disk space runs low or the
+  // site isn't visited for a while (Safari otherwise clears sites after 7 days).
+  try { if (navigator.storage && navigator.storage.persist) IQ.persisted = await navigator.storage.persist(); } catch {}
   await IQ.jobs.markInterrupted();          // jobs only run while the page is open
   IQ.store.trimCache(IQ.config.CACHE_MAX_AGE_DAYS).catch(() => {});
 })();
