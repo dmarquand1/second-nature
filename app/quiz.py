@@ -1,5 +1,6 @@
 """Build quiz questions and check answers."""
 import json
+import math
 import random
 import time
 
@@ -71,16 +72,17 @@ def _store_observations(conn, taxon_id: int, results: list[dict], pool_place_id)
                 pass
         conn.execute(
             """INSERT INTO observations (id, taxon_id, obs_taxon_id, photos, latitude, longitude, obscured,
-                    positional_accuracy, place_guess, observed_on, observer, uri, pool_place_id, fetched_at, dead)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    positional_accuracy, place_guess, observed_on, observer, uri, pool_place_id, fetched_at, dead,
+                    faves)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET photos = excluded.photos, fetched_at = excluded.fetched_at,
-                   dead = excluded.dead,
+                   dead = excluded.dead, faves = excluded.faves,
                    pool_place_id = COALESCE(excluded.pool_place_id, observations.pool_place_id)""",
             (o["id"], taxon_id, (o.get("taxon") or {}).get("id"), json.dumps(photos), lat, lng,
              1 if o.get("obscured") else 0, o.get("positional_accuracy"), o.get("place_guess"),
              o.get("observed_on"), (o.get("user") or {}).get("login"),
              o.get("uri") or f"https://www.inaturalist.org/observations/{o['id']}", pool_place_id, now,
-             1 if is_dead(o) else 0),
+             1 if is_dead(o) else 0, int(o.get("faves_count") or 0)),
         )
 
 
@@ -92,14 +94,15 @@ def observation_pool(taxon_id: int, place_id: int | None) -> list:
     client = get_client()
     # Photos saved before version 0.4.1 don't say whether the organism is dead yet:
     # look them up again once (usually straight from the cache).
-    unchecked = {r["pool_place_id"] for r in rows if r["dead"] is None}
+    unchecked = {r["pool_place_id"] for r in rows if r["dead"] is None or r["faves"] is None}
     if unchecked:
         for pid in unchecked:
             results = client.observations(taxon_id, place_id=pid, per_page=config.OBSERVATIONS_PER_TAXON)
             with get_conn() as conn:
                 _store_observations(conn, taxon_id, results, pid)
         with get_conn() as conn:
-            conn.execute("UPDATE observations SET dead = 0 WHERE taxon_id = ? AND dead IS NULL", (taxon_id,))
+            conn.execute("UPDATE observations SET dead = COALESCE(dead, 0), faves = COALESCE(faves, 0) "
+                         "WHERE taxon_id = ?", (taxon_id,))
             rows = conn.execute("SELECT * FROM observations WHERE taxon_id = ?", (taxon_id,)).fetchall()
     local = [r for r in rows if place_id and r["pool_place_id"] == place_id]
     fetched = False
@@ -152,19 +155,30 @@ def fill_pools_batched(taxon_ids: list[int], place_id: int | None, group: int = 
     return filled
 
 
-def _obs_order(r) -> tuple:
-    # Least shown first; ties broken in a fixed shuffled order, so the deck warm-up
-    # can prepare exactly the photo you'll see next.
-    return (r["times_shown"], (r["id"] * 2654435761) % 4294967296)
+def _obs_order(r, photo_choice: str = "any") -> tuple:
+    """Least shown first. Ties are broken in a fixed shuffled order (so the deck
+    warm-up can prepare exactly the photo you'll see next), tilted by favourites:
+      best  - most favourites first
+      mixed - each favourite makes a photo likelier to come first, but photos
+              without favourites still turn up
+      any   - favourites ignored"""
+    shuffle = ((r["id"] * 2654435761) % 4294967296) / 4294967296    # 0..1, fixed per observation
+    faves = r["faves"] or 0
+    if photo_choice == "best":
+        return (r["times_shown"], -faves, shuffle)
+    if photo_choice == "mixed":
+        return (r["times_shown"], shuffle / (1 + math.log1p(faves)))
+    return (r["times_shown"], shuffle)
 
 
-def next_observation(taxon_id: int, place_id: int | None, hide_dead: bool = True) -> dict | None:
+def next_observation(taxon_id: int, place_id: int | None, hide_dead: bool = True,
+                     photo_choice: str = "mixed") -> dict | None:
     """The observation that will be shown next for this species.
     With hide_dead, observations annotated as dead are skipped (unless that's all there is)."""
     candidates = observation_pool(taxon_id, place_id)
     if hide_dead:
         candidates = [r for r in candidates if not r["dead"]] or candidates
-    return dict(min(candidates, key=_obs_order)) if candidates else None
+    return dict(min(candidates, key=lambda r: _obs_order(r, photo_choice))) if candidates else None
 
 
 def next_question(deck_id: int, rng: random.Random | None = None, practice: bool = False) -> dict:
@@ -181,7 +195,7 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
         # Nothing due and no new cards left today.
         return {"done": True, "counts": counts}
 
-    obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]))
+    obs = next_observation(card["taxon_id"], deck["place_id"], bool(deck["hide_dead"]), deck["photo_choice"])
     if not obs:
         raise QuizError("No research-grade photos found for this species on iNaturalist.")
     n_wrong = deck["num_choices"] - 1

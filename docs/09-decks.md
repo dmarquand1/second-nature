@@ -62,3 +62,20 @@ default**: those observations are skipped and the next photo is used instead.
   leaving the species out.
 * Photos saved by earlier versions are checked once, the first time each species
   comes up (usually from the saved iNaturalist answers, so no extra waiting).
+
+## Which photos: favouring well-liked photos
+
+iNaturalist users can **favourite** observations, and favourited ones tend to have
+sharp, well-lit photos. The app fetches each species' photos most-favourited first,
+and each deck has a **Which photos** setting (New deck and Edit pages):
+
+| Choice | What you see |
+|---|---|
+| **Mixed** (default) | Favourited photos are likelier to come up first, but ordinary field photos still appear. A good balance: "textbook" shots to learn from, real-life ones to test you. |
+| **Best first** | Most-favourited photos first, until you've seen them all. |
+| **Any** | Favourites make no difference. |
+
+Whatever you choose, a photo you've seen fewer times always comes before one you've
+seen more, so you work through all of a species' photos. Many good photos have no
+favourites at all, especially for less popular species, so favourites are a
+preference, not a filter.

@@ -33,6 +33,8 @@ const FakeInat = (() => {
     positional_accuracy: 20, user: { login: "tester" }, taxon: { id: tid },
     // The first observation of each species is annotated "Alive or Dead: Dead".
     annotations: [{ controlled_attribute_id: 17, controlled_value_id: i === 0 ? 19 : 18 }],
+    // Observation 5 is the best-liked (12 favourites), observation 3 has 4.
+    faves_count: { 5: 12, 3: 4 }[i] || 0,
     photos: [0, 1].map((p) => ({ url: `https://inaturalist-open-data.s3.amazonaws.com/photos/${tid}${i}${p}/square.jpg`,
       attribution: "(c) tester, CC BY", license_code: tid === 7 && p === 1 ? null : "cc-by" })),
   }));
@@ -62,6 +64,7 @@ const FakeInat = (() => {
       else out = ids.flatMap((t) => obs(t).slice(0, t === 5 ? 2 : 6).map((o) => ({
         ...o, taxon: { id: t * 100 + 1, ancestor_ids: [ORDER, FAMILY, SPECIES[t][2], t] } })));
       // Like iNat's photo_license filter: drop observations with no photo under those licences.
+      if (params.get("order_by") === "votes") out.sort((a, b) => b.faves_count - a.faves_count);
       const lic = params.get("photo_license");
       if (lic) out = out.filter((o) => o.photos.some((p) => lic.split(",").includes(p.license_code)));
       return { total_results: out.length, results: out };

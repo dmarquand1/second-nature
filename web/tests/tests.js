@@ -281,6 +281,21 @@ test("dead organisms: hidden by default, can be shown", async () => {
   ok([...(await shown(12))].some((id) => dead.has(id)), "dead ones should come round when allowed");
 });
 
+test("photo choice: best first, mixed by default, asks iNat for favourites", async () => {
+  const d = await listDeck(["Turdus merula"]);
+  eq(d.photo_choice, "mixed");
+  ok(FakeInat.calls("/observations").every((c) => c.params.order_by === "votes"), "asked for most-favourited first");
+  eq(IQ.store.get("observations", 1005).faves, 12);
+  await api2("PATCH", `/api/decks/${d.id}`, { photo_choice: "best" });
+  const first = await api2("GET", `/api/decks/${d.id}/next?practice=true`);
+  eq(IQ.store.get("questions", first.question_id).observation_id, 1005);
+  const row = (id, faves) => ({ id, times_shown: 0, faves });
+  for (let i = 1; i < 100; i++) {
+    const [a, b] = [IQ.quiz.obsKey(row(i, 10), "mixed"), IQ.quiz.obsKey(row(i, 0), "mixed")];
+    ok(a[1] < b[1], "favourites tilt mixed");
+  }
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();
@@ -331,6 +346,8 @@ test.live("open-licence photos come from the open-data server", async () => {
   ok(photos.some((p) => IQ.config.OPEN_LICENCES.includes(p.license_code)), "no open-licence photos");
   ok(photos.some((p) => p.url.includes("inaturalist-open-data")), "photos not on the open-data server");
   ok(obs.every((o) => Array.isArray(o.annotations)), "observations don't include annotations (needed to hide dead ones)");
+  ok(obs.every((o, i) => i === 0 || (obs[i - 1].faves_count ?? 0) >= (o.faves_count ?? 0)), "not sorted by favourites");
+  ok((obs[0].faves_count ?? 0) > 0, "the top observation should have favourites");
 });
 
 test.live("look-alike lookups work", async () => {

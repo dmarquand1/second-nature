@@ -33,7 +33,7 @@ IQ.warmup = (() => {
       if (!S.get("cards", card.id)) continue;
       try {
         await IQ.taxa.ensureDetails(card.taxon_id, o);
-        const obs = await Q.nextObservation(card.taxon_id, deck.place_id, o, deck.hide_dead !== false);
+        const obs = await Q.nextObservation(card.taxon_id, deck.place_id, o, deck.hide_dead !== false, deck.photo_choice || "mixed");
         if (obs) {
           await IQ.distractors.gatherCandidates(card.taxon_id, deckId, deck.place_id, obs.latitude, obs.longitude,
                                                 deck.num_choices - 1, o);

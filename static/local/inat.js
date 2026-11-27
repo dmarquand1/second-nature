@@ -118,6 +118,16 @@ IQ.inat = (() => {
   // Only photos with an open licence, unless the player switched that off.
   const licenceParam = () => (IQ.settings.openLicenceOnly() ? cfg.OPEN_LICENCES.join(",") : null);
 
+  // Most-favourited observations first (order_by=votes), so the photo pool includes the
+  // photos people rated best. Falls back to iNat's default order if that's ever refused.
+  async function byFaves(params, o) {
+    try { return (await get("/observations", { ...params, order_by: "votes" }, "observations", o)).results; }
+    catch (e) {
+      if (!/ returned 4\d\d /.test(e.message)) throw e;
+      return (await get("/observations", params, "observations", o)).results;
+    }
+  }
+
   // ---- endpoints ----------------------------------------------------------------
   const onlySpecies = (rs) => rs.filter((r) => (r.taxon || {}).rank === "species");
 
@@ -174,12 +184,12 @@ IQ.inat = (() => {
     async observations(taxonId, placeId = null, perPage = 50, o = {}) {
       const params = { taxon_id: taxonId, place_id: placeId, quality_grade: "research", photos: "true",
                        photo_license: licenceParam(), per_page: perPage };
-      return (await get("/observations", params, "observations", o)).results;
+      return byFaves(params, o);
     },
     async observationsMany(taxonIds, placeId = null, perPage = 200, o = {}) {
       const params = { taxon_id: taxonIds.map(Number).join(","), place_id: placeId, quality_grade: "research",
                        photos: "true", photo_license: licenceParam(), per_page: Math.min(perPage, 200) };
-      return (await get("/observations", params, "observations", o)).results;
+      return byFaves(params, o);
     },
   };
 })();

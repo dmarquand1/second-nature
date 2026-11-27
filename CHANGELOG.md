@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 (2026-11-27) - favour well-liked photos
+
+- **Which photos** deck setting (New deck and Edit pages): **Mixed** (default, favourited photos likelier first),
+  **Best first** (most favourites first) or **Any**. Photos are fetched most-favourited first (`order_by=votes`,
+  with a fallback if iNaturalist ever refuses it). Least-seen photos still always come first, so every photo comes round.
+  Works in the local app and the website. Database upgrade: migration 5 (`decks.photo_choice`, `observations.faves`).
+- Tests: `tests/test_photo_choice.py` (7 tests) and one more browser test; live checks confirm the favourites order.
+
 ## 0.4.1 (2026-11-27) - hide dead organisms
 
 - **Hide photos of dead organisms**: new deck setting (on by default, New deck and Edit pages) that skips

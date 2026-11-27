@@ -225,6 +225,17 @@ class InatClient:
         results = self.get("/identifications/similar_species", params, "similar_species")["results"]
         return [r for r in results if r.get("taxon", {}).get("rank") == "species"]
 
+    def _observations_by_faves(self, params: dict) -> list[dict]:
+        """Most-favourited observations first (order_by=votes), so the photo pool
+        includes the photos people rated best. Falls back to iNat's default order
+        if iNaturalist ever stops accepting that option."""
+        try:
+            return self.get("/observations", {**params, "order_by": "votes"}, "observations")["results"]
+        except InatError as exc:
+            if " returned 4" not in str(exc):
+                raise
+            return self.get("/observations", params, "observations")["results"]
+
     def observations(self, taxon_id: int, place_id=None, per_page: int = 50) -> list[dict]:
         params = {
             "taxon_id": taxon_id,
@@ -233,7 +244,7 @@ class InatClient:
             "photos": "true",
             "per_page": per_page,
         }
-        return self.get("/observations", params, "observations")["results"]
+        return self._observations_by_faves(params)
 
     def observations_many(self, taxon_ids: list[int], place_id=None, per_page: int = 200) -> list[dict]:
         """Research-grade observations with photos for several species in ONE request."""
@@ -244,7 +255,7 @@ class InatClient:
             "photos": "true",
             "per_page": min(per_page, 200),
         }
-        return self.get("/observations", params, "observations")["results"]
+        return self._observations_by_faves(params)
 
 
 _client: InatClient | None = None

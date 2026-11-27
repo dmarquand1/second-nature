@@ -131,7 +131,7 @@ IQ.decks = (() => {
   const clampInt = (v, lo, hi, dflt) => { const n = parseInt(v, 10); return Number.isNaN(n) ? dflt : Math.max(lo, Math.min(n, hi)); };
 
   async function create(body) {
-    const { name = "", source_type, num_choices, new_per_day, description = null, hide_dead = true, ...rest } = body || {};
+    const { name = "", source_type, num_choices, new_per_day, description = null, hide_dead = true, photo_choice = "mixed", ...rest } = body || {};
     const params = Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null));
     validateSource(source_type, params);
     const stored = { ...params }; delete stored.species;
@@ -142,6 +142,7 @@ IQ.decks = (() => {
       place_id: params.place_id ?? null, place_name: params.place_name ?? null,
       num_choices: clampInt(num_choices, 4, 6, cfg.DEFAULT_NUM_CHOICES),
       new_per_day: clampInt(new_per_day, 0, 500, cfg.DEFAULT_NEW_PER_DAY), hide_dead: hide_dead !== false,
+      photo_choice: ["mixed", "best", "any"].includes(photo_choice) ? photo_choice : "mixed",
       created_at: U.now(),
     });
     const jobId = await J.submit("build", deck.id, { source_type, ...params });
@@ -182,6 +183,7 @@ IQ.decks = (() => {
     if (b.num_choices != null) f.num_choices = clampInt(b.num_choices, 4, 6, 5);
     if (b.new_per_day != null) f.new_per_day = clampInt(b.new_per_day, 0, 500, cfg.DEFAULT_NEW_PER_DAY);
     if (b.hide_dead != null) f.hide_dead = !!b.hide_dead;
+    if (["mixed", "best", "any"].includes(b.photo_choice)) f.photo_choice = b.photo_choice;
     if (b.clear_place) { f.place_id = null; f.place_name = null; }
     else if (b.place_id != null) { f.place_id = Number(b.place_id); f.place_name = b.place_name ?? null; }
     await S.update("decks", deckId, f);

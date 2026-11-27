@@ -179,6 +179,11 @@ MIGRATIONS = [
     ALTER TABLE decks ADD COLUMN hide_dead INTEGER NOT NULL DEFAULT 1;   -- 1 = skip observations annotated "Dead"
     ALTER TABLE observations ADD COLUMN dead INTEGER;                    -- 1 dead, 0 alive/unknown, NULL = not checked yet
     """,
+    # 5: favour well-liked photos (version 0.4.2)
+    """
+    ALTER TABLE decks ADD COLUMN photo_choice TEXT NOT NULL DEFAULT 'mixed';  -- 'mixed' | 'best' | 'any'
+    ALTER TABLE observations ADD COLUMN faves INTEGER;                       -- favourites on iNaturalist
+    """,
 ]
 
 

@@ -47,6 +47,7 @@ IQ.quiz = (() => {
         observed_on: o.observed_on ?? null, observer: (o.user || {}).login ?? null,
         uri: o.uri || `https://www.inaturalist.org/observations/${o.id}`,
         pool_place_id: poolPlaceId ?? old?.pool_place_id ?? null, dead: isDead(o) ? 1 : 0,
+        faves: Number(o.faves_count) || 0,
         times_shown: old?.times_shown ?? 0, last_shown: old?.last_shown ?? null, fetched_at: now,
       });
     }
@@ -61,12 +62,13 @@ IQ.quiz = (() => {
     let rows = storedFor(taxonId);
     // Photos saved before version 0.4.1 don't say whether the organism is dead yet:
     // look them up again once (usually straight from the cache).
-    const unchecked = new Set(rows.filter((r) => r.dead == null).map((r) => r.pool_place_id ?? null));
+    const unchecked = new Set(rows.filter((r) => r.dead == null || r.faves == null).map((r) => r.pool_place_id ?? null));
     for (const pid of unchecked) {
       await storeObservations(taxonId, await IQ.inat.observations(taxonId, pid, cfg.OBSERVATIONS_PER_TAXON, o), pid);
     }
     if (unchecked.size) {
-      const left = S.where("observations", (r) => r.taxon_id === taxonId && r.dead == null).map((r) => ({ ...r, dead: 0 }));
+      const left = S.where("observations", (r) => r.taxon_id === taxonId && (r.dead == null || r.faves == null))
+        .map((r) => ({ ...r, dead: r.dead ?? 0, faves: r.faves ?? 0 }));
       await S.putMany("observations", left);
       rows = storedFor(taxonId);
     }
@@ -102,21 +104,30 @@ IQ.quiz = (() => {
     return filled;
   }
 
-  // Least shown first; ties in a fixed shuffled order (so warm-up can prepare the next photo).
-  const obsKey = (r) => [r.times_shown || 0, Number((BigInt(r.id) * 2654435761n) % 4294967296n)];
-  function minObs(rows) {
+  // Least shown first. Ties in a fixed shuffled order (so warm-up can prepare the next photo),
+  // tilted by favourites, same as app/quiz.py _obs_order:
+  //   best - most favourites first; mixed - favourites likelier first; any - ignored.
+  function obsKey(r, choice) {
+    const shuffle = Number((BigInt(r.id) * 2654435761n) % 4294967296n) / 4294967296;
+    const faves = r.faves || 0;
+    if (choice === "best") return [r.times_shown || 0, -faves, shuffle];
+    if (choice === "mixed") return [r.times_shown || 0, shuffle / (1 + Math.log1p(faves))];
+    return [r.times_shown || 0, shuffle];
+  }
+  const less = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+  function minObs(rows, choice = "mixed") {
     let best = null, bk = null;
     for (const r of rows) {
-      const k = obsKey(r);
-      if (!best || k[0] < bk[0] || (k[0] === bk[0] && k[1] < bk[1])) { best = r; bk = k; }
+      const k = obsKey(r, choice);
+      if (!best || less(k, bk)) { best = r; bk = k; }
     }
     return best;
   }
   // With hideDead, observations annotated as dead are skipped (unless that's all there is).
-  async function nextObservation(taxonId, placeId, o = {}, hideDead = true) {
+  async function nextObservation(taxonId, placeId, o = {}, hideDead = true, photoChoice = "mixed") {
     let c = await observationPool(taxonId, placeId, o);
     if (hideDead) { const alive = c.filter((r) => !r.dead); if (alive.length) c = alive; }
-    return c.length ? minObs(c) : null;
+    return c.length ? minObs(c, photoChoice) : null;
   }
 
   async function nextQuestion(deckId, { practice = false } = {}) {
@@ -127,7 +138,7 @@ IQ.quiz = (() => {
     const counts = Sch.queueCounts(deckId);
     if (!card) return { done: true, counts };
 
-    const obs = await nextObservation(card.taxon_id, deck.place_id, {}, deck.hide_dead !== false);
+    const obs = await nextObservation(card.taxon_id, deck.place_id, {}, deck.hide_dead !== false, deck.photo_choice || "mixed");
     if (!obs) throw U.error("No research-grade photos found for this species on iNaturalist.");
     const distractors = await IQ.distractors.pick(card.taxon_id, deck.num_choices - 1,
       { deckId, placeId: deck.place_id, lat: obs.latitude, lng: obs.longitude });
@@ -208,6 +219,6 @@ IQ.quiz = (() => {
     return { rating, due: after.due, state: after.state, previous_state: review.card_before.state };
   }
 
-  return { isDead, licenceInfo, photoUrl, photoSizes, usablePhotos, storeObservations, observationPool, fillPoolsBatched,
+  return { isDead, obsKey, minObs, licenceInfo, photoUrl, photoSizes, usablePhotos, storeObservations, observationPool, fillPoolsBatched,
            nextObservation, nextQuestion, answer, rate, ratingPreviews, fmtSeconds };
 })();

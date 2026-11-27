@@ -48,6 +48,12 @@ IMAGE_HOSTS = (
 ALIVE_OR_DEAD_TERM = 17
 DEAD_VALUE = 19
 
+# Which photo to show next for a species (deck setting "photo_choice"):
+#   mixed - favourited photos come up more often, ordinary ones still appear (default)
+#   best  - most-favourited first, until you've seen them all
+#   any   - favourites make no difference
+PHOTO_CHOICES = ("mixed", "best", "any")
+
 # Big lists
 MAX_DECK_SPECIES = 5000
 

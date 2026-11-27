@@ -23,6 +23,10 @@ async function EditDeckView(deckId) {
         <label>New species per day <input id="e-new" type="number" min="0" max="500" value="${d.new_per_day}"></label>
         <label>Choices per question
           <select id="e-choices">${[4, 5, 6].map((n) => `<option ${n === d.num_choices ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label>Which photos
+          <select id="e-photos">${[["mixed", "Mixed: well-liked photos more often"], ["best", "Best first: most-favourited photos first"],
+            ["any", "Any: favourites make no difference"]].map(([v, t]) =>
+            `<option value="${v}" ${(d.photo_choice || "mixed") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
       </div>
       <label class="check"><input type="checkbox" id="e-hide-dead" ${d.hide_dead === 0 || d.hide_dead === false ? "" : "checked"}>
         Hide photos of dead organisms (observations that iNaturalist users tagged "Dead")</label>
@@ -90,6 +94,7 @@ async function EditDeckView(deckId) {
       new_per_day: +document.getElementById("e-new").value,
       num_choices: +document.getElementById("e-choices").value,
       hide_dead: document.getElementById("e-hide-dead").checked,
+      photo_choice: document.getElementById("e-photos").value,
     };
     if (place && place.id !== d.place_id) Object.assign(body, { place_id: place.id, place_name: place.name });
     if (!place && d.place_id) body.clear_place = true;

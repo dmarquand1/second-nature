@@ -61,6 +61,9 @@ def test_observations_have_photos_location_and_licence(live, blackbird):
     assert images.allowed(o["photos"][0]["url"].replace("square", "medium"))
     # Annotations (e.g. "Alive or Dead") come with each observation, so dead ones can be hidden.
     assert all(isinstance(x.get("annotations"), list) for x in obs)
+    # Most-favourited first (order_by=votes), for the "Which photos" deck setting.
+    faves = [x.get("faves_count") or 0 for x in obs]
+    assert faves == sorted(faves, reverse=True) and faves[0] > 0
 
 
 def test_batched_observations_cover_several_species(live, blackbird):

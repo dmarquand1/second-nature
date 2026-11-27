@@ -97,6 +97,13 @@ GitHub Pages. The local app keeps working.
 The website version doesn't copy photos (they load from iNaturalist) and uses
 open-licence photos only by default, switchable in Settings.
 
+## Shipped in v0.4.2
+
+### 15. Favour photos with more favourites
+*Requested 2026-11-27.* Status: **Done (0.4.2)**. See [09 Decks](09-decks.md#which-photos-favouring-well-liked-photos).
+
+A deck setting: Mixed (default), Best first, or Any.
+
 ## Shipped in v0.4.1
 
 ### 14. Hide photos of dead organisms
@@ -126,6 +133,7 @@ Nothing yet. Add new requests here.
 
 | Change | Version |
 |---|---|
+| Favour well-liked photos (Which photos setting) | 0.4.2 |
 | Hide dead organisms, plain "already running" message, keep browser progress | 0.4.1 |
 | Website version (browser only, GitHub Pages, backup, open-licence photos) | 0.4.0 |
 | Batched lookups, medium photos first, live checks, skip blocked browser tests | 0.3.1 |
