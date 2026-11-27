@@ -17,6 +17,10 @@ function NewDeckView() {
         <label>Species, one per line (scientific or common names, or iNat taxon ids)
           <textarea name="species" rows="8" placeholder="Turdus merula&#10;Song Thrush&#10;Turdus viscivorus"></textarea>
         </label>
+        <label class="file-label">…or load a .txt / .csv file (first column is used)
+          <input type="file" id="species-file" accept=".txt,.csv,text/plain,text/csv">
+        </label>
+        <p class="muted small" id="name-count"></p>
       </div>
 
       <div data-for="taxon place">
@@ -37,7 +41,7 @@ function NewDeckView() {
 
       <div class="row wrap">
         <label data-for="taxon place">Number of species
-          <input type="number" name="limit" value="30" min="2" max="200">
+          <input type="number" name="limit" value="30" min="2" max="5000">
         </label>
         <label>New species per day
           <input type="number" name="new_per_day" value="20" min="0" max="500">
@@ -62,6 +66,22 @@ function NewDeckView() {
   }
   form.querySelectorAll("[name=source_type]").forEach((r) => r.addEventListener("change", showFor));
   showFor();
+
+  const countNames = () => {
+    const n = form.species.value.split("\n").map((x) => x.trim()).filter(Boolean).length;
+    document.getElementById("name-count").textContent = n
+      ? `${n} names. Looking them up takes about ${n > 60 ? Math.ceil(n / 60) + " min" : n + " s"} in the background (cards appear as they're found).`
+      : "";
+  };
+  form.species.addEventListener("input", countNames);
+  document.getElementById("species-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await readTextFile(file);
+    form.species.value = (form.species.value.trim() ? form.species.value.trim() + "\n" : "") + text.trim();
+    if (!form.name.value) form.name.value = file.name.replace(/\.[^.]+$/, "");
+    countNames();
+  });
 
   autocomplete(document.getElementById("taxon-q"), document.getElementById("taxon-results"),
     (q) => api.get(`/api/search/taxa?q=${encodeURIComponent(q)}`),
@@ -104,13 +124,10 @@ function NewDeckView() {
     const status = document.getElementById("form-status");
     const btn = form.querySelector("button[type=submit]");
     btn.disabled = true;
-    status.textContent = type === "list"
-      ? `Looking up ${body.species.length} names on iNaturalist (about 1 per second)…`
-      : "Asking iNaturalist for the most-observed species…";
+    status.textContent = "Creating deck…";
     try {
       const deck = await api.post("/api/decks", body);
-      if (deck.unmatched && deck.unmatched.length) toast(`Not found: ${deck.unmatched.join(", ")}`, true);
-      location.hash = `#/deck/${deck.id}`;
+      location.hash = `#/deck/${deck.id}`;   // the deck page shows progress while species are found
     } catch (err) {
       toast(err.message, true);
       status.textContent = "";

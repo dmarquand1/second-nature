@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0 (2026-11-27) - speed, big decks, editing, stats, zoom, polish
+
+- **Faster**: 2 questions are prepared ahead (with photos downloaded) while you answer; each deck is
+  warmed up in the background (taxonomy, photo pool, look-alikes, first photos); "nearby" lookups are
+  shared within 1° grid cells; quiz requests jump ahead of background ones in the 1 req/s queue.
+- **Offline photo cache** in `data/images/` via `/api/img`, trimmed to 1.5 GB (least recently used first).
+- **Big species lists**: decks are built in the background with a progress bar; upload .txt/.csv; taxon
+  ids looked up 30 at a time; known species need no lookup; up to 5,000 species; report of names not
+  found, best-guess matches and non-species. Deck page has search, sort and paging.
+- **Edit deck page**: rename, description, focus place (set/clear), new per day, choices, add by search
+  / paste / file, multi-select remove, delete.
+- **Stats page** (all decks or one): totals, streak, progress states, answers per day, upcoming reviews,
+  species you struggle with, pairs you mix up, strongest species, per-deck table.
+- **Photo zoom**: click the photo or press Z; wheel/pinch zoom, drag, double-click, full-resolution photo.
+- **Polish (step 8)**: `?` keyboard shortcuts help, arrow keys switch photos, `G D` / `G S` navigation,
+  licence name + link for every photo, your past mix-ups are used as wrong-answer options.
+- Database upgrade 3 (`jobs` table, extra indexes). Browser tests with Playwright (optional).
+
 ## 0.2.0 (2026-11-27) - spaced repetition
 
 - FSRS-5 scheduler (`app/fsrs.py`): stability, difficulty and intervals per species, 90% target retention.

@@ -2,7 +2,7 @@
 so tests run offline and never hit the real API."""
 import pytest
 
-from app import config, db, inat_client
+from app import config, db, images, inat_client, jobs
 
 ORDER, FAMILY, GENUS, OTHER_GENUS = 7251, 12705, 12716, 9999
 
@@ -52,6 +52,16 @@ class FakeClient:
     def autocomplete_places(self, q, per_page=10):
         return [{"id": 6857, "display_name": "United Kingdom", "place_type": 12}]
 
+    def taxa_by_ids(self, ids):
+        self._log("taxa_by_ids", ids=list(ids))
+        return [taxon_obj(int(i)) for i in ids if int(i) in SPECIES]
+
+    def species_counts_many(self, limit, progress=None, **kw):
+        res = self.species_counts(taxon_id=kw.get("taxon_id"), place_id=kw.get("place_id"), per_page=500)
+        if progress:
+            progress(len(res))
+        return res[:limit]
+
     def place(self, pid):
         return {"id": pid, "display_name": "United Kingdom"}
 
@@ -71,17 +81,40 @@ class FakeClient:
             {"id": taxon_id * 1000 + i, "uri": f"https://www.inaturalist.org/observations/{taxon_id * 1000 + i}",
              "observed_on": "2025-05-0%d" % (i + 1), "place_guess": "Oxford, UK", "location": "51.75,-1.25",
              "obscured": False, "positional_accuracy": 20, "user": {"login": "tester"}, "taxon": {"id": taxon_id},
-             "photos": [{"url": f"https://img.test/o{taxon_id}{i}{p}/square.jpg", "attribution": "(c) tester, CC BY",
+             "photos": [{"url": f"https://inaturalist-open-data.s3.amazonaws.com/photos/{taxon_id}{i}{p}/square.jpg", "attribution": "(c) tester, CC BY",
                          "license_code": "cc-by"} for p in range(2)]}
             for i in range(3)
         ]
 
 
+class FakeImageResponse:
+    status_code = 200
+    content = b"\xff\xd8fake-jpeg"
+
+
 @pytest.fixture()
 def fake(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(config, "IMAGE_CACHE_DIR", tmp_path / "images")
+    downloads = []
+
+    def fake_download(url):
+        downloads.append(url)
+        return FakeImageResponse()
+
+    monkeypatch.setattr(images._http, "get", fake_download)
     db.init_db()
     client = FakeClient()
+    client.downloads = downloads
     inat_client.set_client(client)
     yield client
+    jobs.wait_idle(10)          # let background jobs finish before the temp database goes away
     inat_client.set_client(None)
+
+
+def make_deck(name="T", species=("Turdus merula", "Song Thrush", "Redwing"), **kw):
+    """Create a list deck and wait for the background build to finish."""
+    from app import decks
+    d = decks.create_deck(name, "list", {"species": list(species)}, **kw)
+    assert jobs.wait_idle(10)
+    return decks.get_deck(d["id"])

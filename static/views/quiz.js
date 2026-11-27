@@ -1,5 +1,9 @@
 // The quiz screen: photos, map + date, multiple choice, reveal and rating.
+//
+// Speed: the next AHEAD questions are requested while you look at the current
+// one, and their photos are downloaded in the background, so "Next" is instant.
 const RATINGS = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" };
+const AHEAD = 2;
 
 function QuizView(deckId) {
   const app = document.getElementById("app");
@@ -7,15 +11,58 @@ function QuizView(deckId) {
     <div class="row between quiz-head">
       <a href="#/deck/${deckId}" class="muted">← Deck</a>
       <span id="queue" class="muted"></span>
-      <span id="score" class="muted">0 / 0 this session</span>
+      <span class="row"><span id="score" class="muted">0 / 0 this session</span>
+        <button class="btn small-btn" id="help-btn" title="Keyboard shortcuts (?)">?</button></span>
     </div>
+    <div id="warmup" class="warmup muted small hidden"></div>
     <div id="quiz" class="quiz"><p class="loading">Fetching a question from iNaturalist…</p></div>`;
 
   const session = { right: 0, total: 0 };
-  let current = null, result = null, startedAt = 0, answered = false, map = null, nextPromise = null;
-  let practice = false;
+  let current = null, result = null, startedAt = 0, answered = false, map = null;
+  let practice = false, photoIndex = 0, alive = true;
+  let ahead = [];   // promises for questions prepared in advance
 
   const loadQuestion = () => api.get(`/api/decks/${deckId}/next${practice ? "?practice=true" : ""}`);
+
+  function preloadPhotos(q) {
+    if (!q || q.done) return;
+    q.photos.forEach((p) => { const im = new Image(); im.src = p.url; });
+  }
+
+  // Keep AHEAD questions in preparation. Stop at the first "done".
+  async function fillAhead() {
+    while (alive && ahead.length < AHEAD) {
+      const last = ahead[ahead.length - 1];
+      if (last && (await last.then((q) => q.done, () => true))) return;
+      const p = loadQuestion();
+      p.then(preloadPhotos, () => {});
+      ahead.push(p);
+    }
+  }
+
+  async function nextFromQueue() {
+    if (!ahead.length) return loadQuestion();
+    const p = ahead.shift();
+    let q;
+    try { q = await p; } catch (e) { return loadQuestion(); }
+    // A "done" prepared earlier may be out of date (e.g. you rated something Again since).
+    if (q.done) { ahead = []; return loadQuestion(); }
+    return q;
+  }
+
+  // Show deck warm-up progress (photos and look-alikes being fetched in the background).
+  async function watchWarmup() {
+    const box = document.getElementById("warmup");
+    while (alive) {
+      let w;
+      try { w = await api.get(`/api/decks/${deckId}/warmup`); } catch { return; }
+      if (!w || !["queued", "running"].includes(w.status)) { box.classList.add("hidden"); return; }
+      box.classList.remove("hidden");
+      box.innerHTML = `Getting the deck ready in the background: ${w.done} of ${w.total || "?"} species
+        <span class="bar"><span style="width:${w.total ? (100 * w.done / w.total) : 0}%"></span></span>`;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
 
   function showQueue(c) {
     if (!c) return;
@@ -27,20 +74,31 @@ function QuizView(deckId) {
   async function show(promise) {
     const quiz = document.getElementById("quiz");
     quiz.innerHTML = `<p class="loading">Fetching a question from iNaturalist…</p>`;
-    try { current = await promise; } catch (e) {
+    let q0;
+    try { q0 = await (promise || nextFromQueue()); } catch (e) {
+      if (!alive) return;
+      if (/no species yet/i.test(e.message) && alive) {
+        // The deck is still being built in the background: wait for its first species.
+        quiz.innerHTML = `<p class="loading">Finding the first species for this deck on iNaturalist…</p>`;
+        setTimeout(() => alive && show(loadQuestion()), 2000);
+        return;
+      }
       quiz.innerHTML = `<p class="error">${esc(e.message)}</p><button class="btn" id="retry">Try again</button>`;
-      document.getElementById("retry").onclick = () => show(loadQuestion());
+      document.getElementById("retry").onclick = () => { ahead = []; show(loadQuestion()); };
       return;
     }
+    if (!alive) return;
+    current = q0;
     showQueue(current.counts);
     if (current.done) return showDone(current.counts);
 
-    answered = false; result = null;
+    answered = false; result = null; photoIndex = 0;
     const q = current;
     const loc = q.location || {};
     quiz.innerHTML = `
       <section class="photos">
-        <div class="main-photo"><img id="main-img" src="${esc(q.photos[0].url)}" alt="Mystery organism"></div>
+        <div class="main-photo" title="Click to zoom (Z)"><img id="main-img" src="${esc(q.photos[0].url)}" alt="Mystery organism">
+          <button class="zoom-btn" id="zoom-btn" title="Zoom (Z)">⤢ Zoom</button></div>
         ${q.photos.length > 1 ? `<div class="thumbs">${q.photos.map((p, i) =>
           `<img src="${esc(p.url)}" data-i="${i}" class="${i === 0 ? "active" : ""}" alt="Photo ${i + 1}">`).join("")}</div>` : ""}
       </section>
@@ -58,13 +116,25 @@ function QuizView(deckId) {
         <div id="reveal"></div>
       </aside>`;
 
-    quiz.querySelectorAll(".thumbs img").forEach((img) => img.addEventListener("click", () => {
-      document.getElementById("main-img").src = img.src;
-      quiz.querySelectorAll(".thumbs img").forEach((x) => x.classList.toggle("active", x === img));
-    }));
+    quiz.querySelectorAll(".thumbs img").forEach((img) => img.addEventListener("click", () => setPhoto(+img.dataset.i)));
+    quiz.querySelector(".main-photo").addEventListener("click", openZoom);
     quiz.querySelectorAll(".choice").forEach((b) => b.addEventListener("click", () => answer(+b.dataset.id)));
     drawMap(loc);
     startedAt = performance.now();
+    fillAhead();
+  }
+
+  function setPhoto(i) {
+    if (!current || current.done) return;
+    const n = current.photos.length;
+    photoIndex = (i + n) % n;
+    document.getElementById("main-img").src = current.photos[photoIndex].url;
+    document.querySelectorAll(".thumbs img").forEach((x) => x.classList.toggle("active", +x.dataset.i === photoIndex));
+  }
+
+  function openZoom() {
+    if (!current || current.done) return;
+    Viewer.open(current.photos, photoIndex, (i) => setPhoto(i));
   }
 
   function showDone(c) {
@@ -83,7 +153,7 @@ function QuizView(deckId) {
         </div>
         <p class="muted small">Practice still updates the schedule. FSRS knows the card wasn't due yet, so early reviews only count a little.</p>
       </div>`;
-    document.getElementById("practice-btn").onclick = () => { practice = true; show(loadQuestion()); };
+    document.getElementById("practice-btn").onclick = () => { practice = true; ahead = []; show(loadQuestion()); };
   }
 
   function drawMap(loc) {
@@ -107,10 +177,6 @@ function QuizView(deckId) {
     catch (e) { answered = false; toast(e.message, true); return; }
     const r = result;
 
-    // Start loading the next question while the answer is shown.
-    nextPromise = loadQuestion();
-    nextPromise.catch(() => {});
-
     session.total++; if (r.correct) session.right++;
     document.getElementById("score").textContent = `${session.right} / ${session.total} this session`;
 
@@ -130,7 +196,7 @@ function QuizView(deckId) {
           <a href="${esc(r.answer.url)}" target="_blank" rel="noopener">About this species</a>
           ${r.chosen && !r.correct ? ` · <a href="${esc(r.chosen.url)}" target="_blank" rel="noopener">About ${esc(r.chosen.common_name || r.chosen.name)}</a>` : ""}
         </p>
-        <p class="muted small attribution">${o.photos.map((p) => esc(p.attribution || "")).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join("; ")}</p>
+        <p class="muted small attribution">Photos: ${photoCredits(o)}</p>
         <p class="small muted rate-help">${r.correct ? "How well did you know it? Press Enter to keep the suggested rating." : "Wrong answers are rated Again, so you'll see it again soon."}</p>
         <div class="ratings">
           ${[1, 2, 3, 4].map((n) => `
@@ -152,15 +218,16 @@ function QuizView(deckId) {
       if (!r.correct && rating !== 1) { result = r; return; }
       try { await api.post(`/api/questions/${current.question_id}/rate`, { rating }); }
       catch (e) { toast(e.message, true); }
-      nextPromise = null;  // the schedule changed, so fetch a fresh next question
     }
     answered = false; current = null;
-    show(nextPromise || loadQuestion());
-    nextPromise = null;
+    show();
   }
 
   function onKey(e) {
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    if (current && !current.done && (e.key === "z" || e.key === "Z")) { openZoom(); return; }
+    if (current && !current.done && e.key === "ArrowLeft") { setPhoto(photoIndex - 1); return; }
+    if (current && !current.done && e.key === "ArrowRight") { setPhoto(photoIndex + 1); return; }
     if (!answered && /^[1-6]$/.test(e.key) && current && !current.done) {
       const c = current.choices[+e.key - 1];
       if (c) answer(c.id);
@@ -171,7 +238,29 @@ function QuizView(deckId) {
     }
   }
   document.addEventListener("keydown", onKey);
-  window.currentCleanup = () => { document.removeEventListener("keydown", onKey); if (map) map.remove(); };
+  window.currentCleanup = () => {
+    alive = false;
+    document.removeEventListener("keydown", onKey);
+    if (map) map.remove();
+    if (Viewer.isOpen()) Viewer.close();
+  };
+  document.getElementById("help-btn").onclick = () => Shortcuts.toggle();
 
+  api.post(`/api/decks/${deckId}/warmup`).then(watchWarmup, () => {});
   show(loadQuestion());
+}
+
+// "(c) Jane Doe, some rights reserved (CC BY-NC)" with the licence linked, once per photographer/licence.
+function photoCredits(o) {
+  const seen = new Set();
+  return o.photos.filter((p) => {
+    const k = (p.attribution || "") + p.license_name;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).map((p) => {
+    const lic = p.license_url
+      ? `<a href="${esc(p.license_url)}" target="_blank" rel="noopener">${esc(p.license_name)}</a>`
+      : esc(p.license_name || "");
+    return `${esc(p.attribution || "Unknown photographer")} · ${lic}`;
+  }).join("; ") + ` · <a href="${esc(o.uri)}" target="_blank" rel="noopener">source</a>`;
 }

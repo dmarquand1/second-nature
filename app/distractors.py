@@ -11,6 +11,7 @@ Candidates come from several sources, each adding to a score:
     share genus / family / order (also +0.5 for any deck member)
   same family seen near the observation     1.5   (co-occurring in region)
   same family anywhere                      1.0   (fallback)
+  species YOU have mixed up with it before  2.0 + 0.5 per mix-up (max +2)
   same order near the observation           0.5   (fallback)
 
 Then a weighted random sample from the best candidates, so the same
@@ -42,6 +43,17 @@ def _deck_members(deck_id: int, target_id: int) -> list[dict]:
             (deck_id, target_id),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def _your_confusions(target_id: int) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            """SELECT t.id, t.name, t.common_name, t.rank, COUNT(*) AS n FROM reviews r
+               JOIN taxa t ON t.id = CASE WHEN r.taxon_id = ? THEN r.chosen_taxon_id ELSE r.taxon_id END
+               WHERE r.correct = 0 AND (r.taxon_id = ? OR r.chosen_taxon_id = ?)
+               GROUP BY t.id ORDER BY n DESC LIMIT 10""",
+            (target_id, target_id, target_id),
+        ).fetchall()
 
 
 def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int | None = None,
@@ -88,9 +100,14 @@ def gather_candidates(target_id: int, deck_id: int | None = None, place_id: int 
                       radius_km=config.NEARBY_RADIUS_KM, per_page=30):
             _add(cands, r["taxon"], 1.5, "same family, found nearby")
 
+    # 5. Species you've confused with this one before (either way round).
+    for row in _your_confusions(target_id):
+        t = {"id": row["id"], "name": row["name"], "preferred_common_name": row["common_name"], "rank": row["rank"]}
+        _add(cands, t, 2.0 + min(row["n"] * 0.5, 2.0), "you've mixed these up before")
+
     cands.pop(target_id, None)
 
-    # 5. Fallbacks when we are still short of options.
+    # 6. Fallbacks when we are still short of options.
     def enough():
         return len([c for c in cands.values() if c["score"] >= 1.0]) >= needed * 2
 

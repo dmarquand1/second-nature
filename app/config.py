@@ -28,6 +28,23 @@ DEFAULT_NUM_CHOICES = 5          # allowed range 4-6
 MAX_PHOTOS_PER_QUESTION = 4
 OBSERVATIONS_PER_TAXON = 50      # size of the photo pool fetched per species
 NEARBY_RADIUS_KM = 100           # "co-occurring in the region" radius
+NEARBY_GRID_DEG = 1.0            # photos in the same 1-degree cell share one "nearby" lookup
+
+# Speed
+PREFETCH_PENDING_MINUTES = 10    # questions prepared ahead count as "in use" for this long
+WARMUP_IMAGES_FOR_NEXT = 15      # warm-up downloads photos for this many upcoming species
+
+# Offline photo cache (data/images)
+IMAGE_CACHE_DIR = DATA_DIR / "images"
+IMAGE_CACHE_MAX_MB = int(os.environ.get("INAT_QUIZ_IMAGE_CACHE_MB", "1500"))
+IMAGE_HOSTS = (
+    "inaturalist-open-data.s3.amazonaws.com",
+    "static.inaturalist.org",
+    "www.inaturalist.org",
+)
+
+# Big lists
+MAX_DECK_SPECIES = 5000
 
 # Spaced repetition (FSRS)
 DESIRED_RETENTION = float(os.environ.get("INAT_QUIZ_RETENTION", "0.9"))  # 0.7-0.97

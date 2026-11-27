@@ -6,6 +6,7 @@ The schema is designed so spaced repetition (FSRS, step 6) and stats
   * `reviews` logs every answer with rating, timing and the choices shown.
 """
 import sqlite3
+import time
 from contextlib import contextmanager
 
 from . import config
@@ -152,6 +153,27 @@ MIGRATIONS = [
     UPDATE cards SET state = 0, due = NULL WHERE stability IS NULL;
     CREATE INDEX IF NOT EXISTS idx_cards_due ON cards(deck_id, due);
     """,
+    # 3: background jobs, faster lookups (version 0.3.0)
+    """
+    CREATE TABLE IF NOT EXISTS jobs (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind        TEXT NOT NULL,              -- 'build' (find species for a deck) | 'warmup'
+        deck_id     INTEGER REFERENCES decks(id) ON DELETE CASCADE,
+        status      TEXT NOT NULL,              -- queued | running | done | failed | interrupted
+        params      TEXT,                       -- JSON
+        total       INTEGER NOT NULL DEFAULT 0,
+        done        INTEGER NOT NULL DEFAULT 0,
+        message     TEXT,
+        result      TEXT,                       -- JSON (e.g. names not found)
+        created_at  REAL NOT NULL,
+        finished_at REAL
+    );
+    CREATE INDEX IF NOT EXISTS idx_jobs_deck ON jobs(deck_id, kind, status);
+    CREATE INDEX IF NOT EXISTS idx_questions_pending ON questions(deck_id, answered, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reviews_time ON reviews(reviewed_at);
+    CREATE INDEX IF NOT EXISTS idx_taxa_name ON taxa(name COLLATE NOCASE);
+    CREATE INDEX IF NOT EXISTS idx_taxa_common ON taxa(common_name COLLATE NOCASE);
+    """,
 ]
 
 
@@ -164,3 +186,6 @@ def init_db() -> None:
                 if script.strip():
                     conn.executescript(script)
                 conn.execute(f"PRAGMA user_version = {i}")
+        # Jobs that were running when the app was last stopped can't continue.
+        conn.execute("UPDATE jobs SET status = 'interrupted', finished_at = ? "
+                     "WHERE status IN ('queued', 'running')", (time.time(),))

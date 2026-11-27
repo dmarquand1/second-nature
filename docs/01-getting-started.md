@@ -90,11 +90,13 @@ python run.py --no-browser    # don't open a browser tab
    - **Common species in a place**: search a place, optionally limit to a group (e.g. `Odonata`).
 4. Optionally pick a **place** so photos and distractors come from that region.
 5. Click **Create deck**, then **Study this deck**.
-6. Answer with the mouse or keys `1`-`6`; press `Enter` for the next question.
+6. Answer with the mouse or keys `1`-`6`, then rate it (`Enter` accepts the
+   suggested rating). Click the photo or press `Z` to zoom. Press `?` for all shortcuts.
 
-The **first question for each species takes a few seconds** because the app
-fetches photos and look-alikes from iNaturalist at 1 request per second.
-After that, everything is cached in `data/inat_quiz.db` and is fast.
+A **new deck takes a little while to get ready**: species and photos are
+fetched from iNaturalist at 1 request per second, in the background. You can
+start studying straight away, and it gets fast once the deck is warmed up.
+Everything is then cached in `data/` (see [08](08-speed-and-offline.md)).
 
 ## Step 8. Run the tests
 
@@ -103,6 +105,14 @@ pytest
 ```
 
 All tests should pass. They use a fake iNaturalist, so they work offline.
+The browser tests are skipped until you install their browser once:
+
+```bash
+python -m playwright install chromium
+pytest
+```
+
+More in [11 Testing](11-testing.md).
 
 ## Troubleshooting
 

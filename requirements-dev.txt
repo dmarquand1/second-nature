@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest>=8
+# Browser tests (tests/test_ui.py). After installing, run once:  python -m playwright install chromium
+playwright>=1.45

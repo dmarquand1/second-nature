@@ -16,6 +16,12 @@ const api = {
   del: (url) => api.request("DELETE", url),
 };
 
+// Call at the top of a view; the returned function says whether we're still on that page.
+function stillHere() {
+  const token = window.routeToken;
+  return () => token === window.routeToken;
+}
+
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -66,4 +72,51 @@ function relativeTime(unixSeconds) {
   if (s < 20 * 3600) return `in ${Math.round(s / 3600)} hours`;
   const days = Math.round(s / 86400);
   return days <= 1 ? "tomorrow" : `in ${days} days`;
+}
+
+// Background jobs (building decks): poll until finished, calling onUpdate(job) each time.
+async function pollJob(jobId, onUpdate, isAlive = () => true) {
+  while (isAlive()) {
+    let job;
+    try { job = await api.get(`/api/jobs/${jobId}`); } catch (e) { return null; }
+    onUpdate(job);
+    if (!["queued", "running"].includes(job.status)) return job;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return null;
+}
+
+function progressBar(done, total) {
+  const pct = total ? Math.round((100 * done) / total) : 0;
+  return `<span class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></span>`;
+}
+
+// What happened in a "build" job: added, not found, guesses to check.
+function jobResultHtml(job) {
+  if (!job) return "";
+  if (["queued", "running"].includes(job.status)) {
+    return `<div class="job running">${esc(job.message || "Finding species…")} ${progressBar(job.done, job.total)}
+      <span class="muted small">${job.done} of ${job.total || "?"} · you can start studying already</span></div>`;
+  }
+  if (job.status === "failed" || job.status === "interrupted") {
+    return `<div class="job bad">Finding species ${job.status === "failed" ? "failed" : "was interrupted (the app was stopped)"}.
+      ${esc(job.message || "")} You can add the rest from <b>Edit</b>.</div>`;
+  }
+  const r = job.result || {};
+  const parts = [`<b>${r.added ?? 0}</b> species added.`];
+  if (r.not_found?.length) parts.push(`<details><summary>${r.not_found.length} not found on iNaturalist</summary><p class="small">${r.not_found.map(esc).join(", ")}</p></details>`);
+  if (r.guessed?.length) parts.push(`<details><summary>${r.guessed.length} matched by best guess (check these)</summary><ul class="small">${r.guessed.map((g) =>
+    `<li>“${esc(g.input)}” → ${taxonLabel({ name: g.name, common_name: g.common_name })}</li>`).join("")}</ul></details>`);
+  if (r.not_species?.length) parts.push(`<details><summary>${r.not_species.length} skipped (not a species)</summary><p class="small">${r.not_species.map(esc).join(", ")}</p></details>`);
+  return `<div class="job ok">${parts.join(" ")}</div>`;
+}
+
+// Read a .txt or .csv file the user picked; resolves with its text.
+function readTextFile(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsText(file);
+  });
 }

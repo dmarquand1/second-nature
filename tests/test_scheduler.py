@@ -4,13 +4,14 @@ from fastapi.testclient import TestClient
 
 from app import decks
 from app.db import get_conn
+from app import jobs
 from app.main import app
 from app.scheduler import pick_next_card, queue_counts
+from tests.conftest import make_deck
 
 
 def _deck(n_new_per_day=20):
-    return decks.create_deck("T", "list", {"species": ["Turdus merula", "Song Thrush", "Redwing"]},
-                             new_per_day=n_new_per_day)
+    return make_deck(new_per_day=n_new_per_day)
 
 
 def test_due_cards_come_before_learn_ahead_and_new_limit(fake):
@@ -90,6 +91,6 @@ def test_migration_upgrades_old_database(tmp_path, monkeypatch):
     db.init_db()
     db.init_db()  # running twice is safe
     with db.get_conn() as c:
-        assert c.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert c.execute("PRAGMA user_version").fetchone()[0] == 3
         assert c.execute("SELECT new_per_day FROM decks").fetchone()[0] == 20
         assert c.execute("SELECT state FROM cards").fetchone()[0] == 0

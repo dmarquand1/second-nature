@@ -30,8 +30,10 @@
 7. If you pick a different rating, `POST /api/questions/{qid}/rate` resets the
    card to how it was and re-runs FSRS with your rating.
 
-The frontend starts loading the next question while you read the answer,
-so the wait is mostly hidden.
+The frontend keeps 2 questions prepared ahead, and a background warm-up
+fetches what each species needs before you get to it. See
+[08 Speed and offline photos](08-speed-and-offline.md). Background work runs in
+one worker thread (`app/jobs.py`) and always gives way to the quiz.
 
 ## API endpoints
 
@@ -39,13 +41,20 @@ so the wait is mostly hidden.
 |---|---|---|
 | GET | `/api/search/taxa?q=` | Taxon autocomplete |
 | GET | `/api/search/places?q=` | Place autocomplete |
-| GET | `/api/decks` | List decks with counts and accuracy |
-| POST | `/api/decks` | Create a deck (`source_type`: `list`, `taxon`, `place`) |
+| GET | `/api/decks` | List decks with counts, accuracy, whether still being built |
+| POST | `/api/decks` | Create a deck (`source_type`: `list`, `taxon`, `place`); species are found in a background job (`job_id`) |
 | GET | `/api/decks/{id}` | Deck with its species |
 | DELETE | `/api/decks/{id}` | Delete a deck and its history |
-| POST | `/api/decks/{id}/species` | Add species by name |
-| DELETE | `/api/decks/{id}/species/{taxon_id}` | Remove a species |
-| PATCH | `/api/decks/{id}` | Change name, `new_per_day`, `num_choices` |
+| POST | `/api/decks/{id}/species` | Add names (list or text) in the background; returns `job_id` |
+| POST | `/api/decks/{id}/taxa` | Add species by taxon id (from the search box) |
+| POST | `/api/decks/{id}/remove` | Remove several species (`taxon_ids`) |
+| DELETE | `/api/decks/{id}/species/{taxon_id}` | Remove one species |
+| POST / GET | `/api/decks/{id}/warmup` | Start / check the deck warm-up |
+| GET | `/api/jobs/{id}` | Progress and result of a background job |
+| GET | `/api/stats?deck_id=` | Everything on the Stats page (all decks without `deck_id`) |
+| GET | `/api/img?u=` | A photo through the offline cache (iNat photo hosts only) |
+| GET | `/api/info` | Version and photo cache size |
+| PATCH | `/api/decks/{id}` | Change name, description, `new_per_day`, `num_choices`, `place_id`/`place_name`, `clear_place` |
 | GET | `/api/decks/{id}/next` | Next question, or `{"done": true}` when nothing is due (`?practice=true` keeps going) |
 | POST | `/api/questions/{id}/answer` | Answer (`taxon_id`, `response_ms`); returns suggested rating and intervals |
 | POST | `/api/questions/{id}/rate` | Change the rating (`rating` 1-4) |
@@ -70,4 +79,7 @@ Settings live in `app/config.py`.
 
 Plain HTML/CSS/JS, no build step. `app.js` is a tiny hash router
 (`#/`, `#/new`, `#/deck/3`, `#/quiz/3`), each screen is one file in
-`static/views/`. The map uses Leaflet with OpenStreetMap tiles.
+`static/views/`. The map uses Leaflet with OpenStreetMap tiles. `viewer.js`
+is the zoomable photo viewer, `shortcuts.js` the `?` help. Each page checks
+`stillHere()` after loading data, so a slow response never draws over the page
+you've moved to.

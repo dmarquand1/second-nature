@@ -5,8 +5,10 @@ Only GET requests are made. Every response is cached in the `api_cache`
 table, so repeating a quiz mostly works offline.
 """
 import json
+import math
 import threading
 import time
+from contextlib import contextmanager
 from urllib.parse import urlencode
 
 import httpx
@@ -19,21 +21,60 @@ class InatError(Exception):
     pass
 
 
+_local = threading.local()
+
+
+@contextmanager
+def background_priority():
+    """Requests made inside this block give way to requests for the quiz you're
+    looking at (used by the deck warm-up and big-list jobs)."""
+    _local.background = True
+    try:
+        yield
+    finally:
+        _local.background = False
+
+
+def is_background() -> bool:
+    return getattr(_local, "background", False)
+
+
 class RateLimiter:
-    """Blocks so that calls are at least `min_interval` seconds apart."""
+    """Blocks so that calls are at least `min_interval` seconds apart.
+    Background callers wait while any foreground caller is queued."""
 
     def __init__(self, min_interval: float):
         self.min_interval = min_interval
         self._lock = threading.Lock()
         self._last = 0.0
+        self._foreground_waiting = 0
+        self._count_lock = threading.Lock()
 
     def wait(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            delay = self._last + self.min_interval - now
-            if delay > 0:
-                time.sleep(delay)
-            self._last = time.monotonic()
+        background = is_background()
+        if background:
+            while self._foreground_waiting > 0:
+                time.sleep(0.05)
+        else:
+            with self._count_lock:
+                self._foreground_waiting += 1
+        try:
+            with self._lock:
+                now = time.monotonic()
+                delay = self._last + self.min_interval - now
+                if delay > 0:
+                    time.sleep(delay)
+                self._last = time.monotonic()
+        finally:
+            if not background:
+                with self._count_lock:
+                    self._foreground_waiting -= 1
+
+
+def snap_to_grid(value: float, grid_deg: float) -> float:
+    """Round a coordinate to the centre of a grid cell, so nearby photos share
+    one cached "species near here" lookup."""
+    return round(math.floor(float(value) / grid_deg) * grid_deg + grid_deg / 2, 4)
 
 
 def _cache_key(path: str, params: dict) -> str:
@@ -46,6 +87,8 @@ class InatClient:
                  min_interval: float = config.INAT_MIN_SECONDS_BETWEEN_REQUESTS):
         self.base_url = base_url.rstrip("/")
         self.limiter = RateLimiter(min_interval)
+        self._key_locks: dict[str, threading.Lock] = {}
+        self._key_locks_guard = threading.Lock()
         self._http = httpx.Client(
             timeout=config.INAT_TIMEOUT_SECONDS,
             headers={"User-Agent": config.INAT_USER_AGENT, "Accept": "application/json"},
@@ -77,6 +120,20 @@ class InatClient:
         If the request fails but an old cached copy exists, the old copy is used."""
         params = params or {}
         key = _cache_key(path, params)
+        # One fetch per key at a time: if the warm-up is already fetching this,
+        # wait for it and use its result instead of asking iNaturalist twice.
+        with self._key_locks_guard:
+            lock = self._key_locks.setdefault(key, threading.Lock())
+        with lock:
+            return self._get_locked(path, params, key, ttl_kind)
+
+    def cached(self, path: str, params: dict | None = None) -> bool:
+        """True if a response for this request is already cached (fresh or not)."""
+        with get_conn() as conn:
+            return conn.execute("SELECT 1 FROM api_cache WHERE cache_key = ?",
+                                (_cache_key(path, params or {}),)).fetchone() is not None
+
+    def _get_locked(self, path: str, params: dict, key: str, ttl_kind: str) -> dict:
         ttl = config.CACHE_TTL.get(ttl_kind, config.CACHE_TTL["default"])
         with get_conn() as conn:
             row = conn.execute(
@@ -106,6 +163,15 @@ class InatClient:
         return self.get("/taxa", {"q": q, "rank": rank, "per_page": per_page, "is_active": "true"},
                         "taxa")["results"]
 
+    def taxa_by_ids(self, ids: list[int]) -> list[dict]:
+        """Look up many taxa at once (30 per request)."""
+        out = []
+        ids = [int(i) for i in ids]
+        for i in range(0, len(ids), 30):
+            chunk = ",".join(str(x) for x in ids[i:i + 30])
+            out += self.get(f"/taxa/{chunk}", {}, "taxa")["results"]
+        return out
+
     def taxon(self, taxon_id: int) -> dict | None:
         results = self.get(f"/taxa/{int(taxon_id)}", {}, "taxa")["results"]
         return results[0] if results else None
@@ -118,20 +184,40 @@ class InatClient:
         return results[0] if results else None
 
     def species_counts(self, *, taxon_id=None, place_id=None, lat=None, lng=None,
-                       radius_km=None, iconic_taxa=None, per_page: int = 100) -> list[dict]:
-        """Most-observed research-grade species, optionally within a taxon/place."""
+                       radius_km=None, iconic_taxa=None, per_page: int = 100, page: int = 1) -> list[dict]:
+        """Most-observed research-grade species, optionally within a taxon/place.
+        lat/lng are snapped to a grid (NEARBY_GRID_DEG) so nearby photos share the cache."""
+        grid = config.NEARBY_GRID_DEG
         params = {
             "quality_grade": "research",
             "taxon_id": taxon_id,
             "place_id": place_id,
-            "lat": None if lat is None else round(float(lat), 1),
-            "lng": None if lng is None else round(float(lng), 1),
+            "lat": None if lat is None else snap_to_grid(lat, grid),
+            "lng": None if lng is None else snap_to_grid(lng, grid),
             "radius": radius_km,
             "iconic_taxa": iconic_taxa,
             "per_page": min(per_page, 500),
+            "page": page if page > 1 else None,
         }
         results = self.get("/observations/species_counts", params, "species_counts")["results"]
         return [r for r in results if r.get("taxon", {}).get("rank") == "species"]
+
+    def species_counts_many(self, limit: int, progress=None, **kwargs) -> list[dict]:
+        """Like species_counts but pages through results to get up to `limit` species."""
+        out, page = [], 1
+        while len(out) < limit:
+            batch_raw = self.get("/observations/species_counts", {
+                "quality_grade": "research", "taxon_id": kwargs.get("taxon_id"),
+                "place_id": kwargs.get("place_id"), "per_page": 500, "page": page if page > 1 else None,
+            }, "species_counts")
+            results = batch_raw.get("results", [])
+            out += [r for r in results if r.get("taxon", {}).get("rank") == "species"]
+            if progress:
+                progress(min(len(out), limit))
+            if len(results) < 500 or page * 500 >= batch_raw.get("total_results", 0):
+                break
+            page += 1
+        return out[:limit]
 
     def similar_species(self, taxon_id: int, place_id=None) -> list[dict]:
         """Species that iNat users commonly confuse with this one."""

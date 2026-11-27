@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app import jobs
 from app.main import app
 
 
@@ -8,6 +9,7 @@ def test_full_quiz_round(fake):
         d = c.post("/api/decks", json={"name": "Thrushes", "source_type": "list",
                                        "species": ["Turdus merula", "Song Thrush", "Redwing"],
                                        "num_choices": 4}).json()
+        jobs.wait_idle(10)
         q = c.get(f"/api/decks/{d['id']}/next").json()
         assert len(q["choices"]) == 4
         assert 1 <= len(q["photos"]) <= 4
@@ -30,6 +32,7 @@ def test_no_repeat_species_in_a_row(fake):
     with TestClient(app) as c:
         d = c.post("/api/decks", json={"name": "T", "source_type": "list",
                                        "species": ["Turdus merula", "Song Thrush"]}).json()
+        jobs.wait_idle(10)
         last = None
         for _ in range(6):
             # practice mode always has a card to show, so the rule is tested every round

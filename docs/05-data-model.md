@@ -10,6 +10,7 @@ SQLite file: `data/inat_quiz.db` (created automatically). Schema: `app/db.py`.
 | `cards` | species in a deck | `deck_id`, `taxon_id`, **FSRS state columns** |
 | `observations` | iNat observation in the photo pool | `photos` JSON (url, attribution, licence), lat/lng, date, `times_shown` |
 | `questions` | question shown | `card_id`, `observation_id`, `choices` JSON, `answered` |
+| `jobs` | background job | `kind` (build / warmup), `status`, `done` / `total` progress, `result` JSON |
 | `reviews` | answer given | `correct`, `rating` (1-4), `response_ms`, `chosen_taxon_id`, `reviewed_at`, `card_before` / `card_after` (FSRS state JSON) |
 
 ## FSRS state (step 6, done in 0.2.0)
@@ -33,6 +34,9 @@ so you never need to delete `data/inat_quiz.db` when updating.
 |---|---|
 | 1 | Original 0.1.0 tables |
 | 2 | `decks.new_per_day`, `reviews.card_before`/`card_after`; 0.1 cards reset to new |
+| 3 | `jobs` table; indexes for pending questions, review times and name lookups |
+
+Photos are not in the database: they're files in `data/images/` (see [08](08-speed-and-offline.md)).
 
 ## Ready for stats (step 7)
 

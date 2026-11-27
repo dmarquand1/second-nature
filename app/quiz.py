@@ -10,6 +10,7 @@ from .inat_client import get_client
 from .fsrs import CardState
 from .scheduler import (apply_rating, fsrs, pick_next_card, queue_counts, rating_from_answer,
                         restore_state, save_state, state_json, to_state)
+from .images import local_url
 from .taxa import get_taxon, public
 
 
@@ -17,9 +18,23 @@ class QuizError(Exception):
     pass
 
 
+def licence_info(code: str | None) -> dict:
+    """Readable name and link for an iNaturalist photo licence code (e.g. 'cc-by-nc')."""
+    if not code:
+        return {"license_name": "All rights reserved", "license_url": None}
+    code = code.lower()
+    if code == "cc0":
+        return {"license_name": "CC0", "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"}
+    if code.startswith("cc-"):
+        parts = code[3:]
+        return {"license_name": "CC " + parts.upper(),
+                "license_url": f"https://creativecommons.org/licenses/{parts}/4.0/"}
+    return {"license_name": code, "license_url": None}
+
+
 def _photo_url(url: str, size: str = "large") -> str:
     # iNat photo URLs end in square/small/medium/large/original + extension
-    for s in ("square", "small", "medium", "thumb", "original"):
+    for s in ("square", "small", "medium", "large", "thumb", "original"):
         url = url.replace(f"/{s}.", f"/{size}.")
     return url
 
@@ -53,8 +68,8 @@ def _store_observations(conn, taxon_id: int, results: list[dict], pool_place_id)
         )
 
 
-def _choose_observation(taxon_id: int, place_id: int | None, rng: random.Random) -> dict:
-    """Pick a research-grade observation of this species, fetching a pool if needed.
+def observation_pool(taxon_id: int, place_id: int | None) -> list:
+    """All stored observations to quiz on for this species, fetching from iNat if needed.
     Prefers the deck's place; falls back to worldwide if it has too few."""
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM observations WHERE taxon_id = ?", (taxon_id,)).fetchall()
@@ -77,13 +92,19 @@ def _choose_observation(taxon_id: int, place_id: int | None, rng: random.Random)
         with get_conn() as conn:
             rows = conn.execute("SELECT * FROM observations WHERE taxon_id = ?", (taxon_id,)).fetchall()
         local = [r for r in rows if place_id and r["pool_place_id"] == place_id]
-    candidates = local or rows
-    if not candidates:
-        raise QuizError("No research-grade photos found for this species.")
-    # Least-shown first, random among ties.
-    least = min(r["times_shown"] for r in candidates)
-    pick = rng.choice([r for r in candidates if r["times_shown"] == least])
-    return dict(pick)
+    return local or rows
+
+
+def _obs_order(r) -> tuple:
+    # Least shown first; ties broken in a fixed shuffled order, so the deck warm-up
+    # can prepare exactly the photo you'll see next.
+    return (r["times_shown"], (r["id"] * 2654435761) % 4294967296)
+
+
+def next_observation(taxon_id: int, place_id: int | None) -> dict | None:
+    """The observation that will be shown next for this species."""
+    candidates = observation_pool(taxon_id, place_id)
+    return dict(min(candidates, key=_obs_order)) if candidates else None
 
 
 def next_question(deck_id: int, rng: random.Random | None = None, practice: bool = False) -> dict:
@@ -100,7 +121,9 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
         # Nothing due and no new cards left today.
         return {"done": True, "counts": counts}
 
-    obs = _choose_observation(card["taxon_id"], deck["place_id"], rng)
+    obs = next_observation(card["taxon_id"], deck["place_id"])
+    if not obs:
+        raise QuizError("No research-grade photos found for this species on iNaturalist.")
     n_wrong = deck["num_choices"] - 1
     distractors = pick_distractors(card["taxon_id"], n_wrong, deck_id=deck_id, place_id=deck["place_id"],
                                    lat=obs["latitude"], lng=obs["longitude"], rng=rng)
@@ -124,7 +147,9 @@ def next_question(deck_id: int, rng: random.Random | None = None, practice: bool
     return {
         "question_id": qid,
         "deck_id": deck_id,
-        "photos": [{"url": p["url"]} for p in photos],   # attribution is shown on reveal
+        # Photos come through the local offline cache. Attribution is shown on reveal.
+        "photos": [{"url": local_url(p["url"]), "original": local_url(_photo_url(p["url"], "original"))}
+                   for p in photos],
         "location": {
             "lat": obs["latitude"], "lng": obs["longitude"],
             "obscured": bool(obs["obscured"]), "accuracy_m": obs["positional_accuracy"],
@@ -170,7 +195,8 @@ def answer_question(question_id: int, chosen_taxon_id: int, response_ms: int | N
         "observation": {
             "id": obs["id"], "uri": obs["uri"], "observer": obs["observer"],
             "observed_on": obs["observed_on"], "place_guess": obs["place_guess"],
-            "photos": json.loads(obs["photos"])[: config.MAX_PHOTOS_PER_QUESTION],
+            "photos": [{**p, **licence_info(p.get("license"))}
+                       for p in json.loads(obs["photos"])[: config.MAX_PHOTOS_PER_QUESTION]],
         },
     }
 

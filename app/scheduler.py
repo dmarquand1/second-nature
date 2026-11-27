@@ -118,10 +118,17 @@ def pick_next_card(conn, deck_id: int, rng: random.Random | None = None, now: fl
         "SELECT card_id FROM questions WHERE deck_id = ? ORDER BY id DESC LIMIT 1", (deck_id,)
     ).fetchone()
     last_id = last["card_id"] if last else None
+    # Cards already in a question prepared ahead (not answered yet) are avoided,
+    # so preloading 2-3 questions doesn't give you the same species twice.
+    pending = {r[0] for r in conn.execute(
+        "SELECT card_id FROM questions WHERE deck_id = ? AND answered = 0 AND created_at > ?",
+        (deck_id, now - config.PREFETCH_PENDING_MINUTES * 60),
+    ).fetchall()}
+    avoid = pending | {last_id}
 
     def first(rows):
         rows = [dict(r) for r in rows]
-        others = [r for r in rows if r["id"] != last_id]
+        others = [r for r in rows if r["id"] not in avoid]
         return (others or rows)[0] if rows else None
 
     due = conn.execute(
@@ -138,21 +145,22 @@ def pick_next_card(conn, deck_id: int, rng: random.Random | None = None, now: fl
         rng.shuffle(new_rows)
 
     # Mix due and new cards in proportion to how many of each are left.
-    if due and new_rows:
-        if rng.random() < counts["new_available"] / (counts["new_available"] + len(due)):
-            return first(new_rows)
-        return first(due)
-    if due:
-        return first(due)
-    if new_rows:
-        return first(new_rows)
+    due = [dict(r) for r in due]
+    fresh_due = [r for r in due if r["id"] not in avoid]
+    fresh_new = [r for r in new_rows if r["id"] not in avoid]
+    if fresh_due and fresh_new:
+        if rng.random() < counts["new_available"] / (counts["new_available"] + len(fresh_due)):
+            return fresh_new[0]
+        return fresh_due[0]
+    if fresh_due or fresh_new:
+        return (fresh_due or fresh_new)[0]
 
     ahead = conn.execute(
         "SELECT * FROM cards WHERE deck_id = ? AND state IN (?, ?) AND due <= ? ORDER BY due",
         (deck_id, LEARNING, RELEARNING, now + LEARN_AHEAD_SECONDS),
     ).fetchall()
     card = first(ahead) if ahead else None
-    if card and not (practice and card["id"] == last_id):
+    if card and not (practice and card["id"] in avoid):
         return card
 
     if practice:
