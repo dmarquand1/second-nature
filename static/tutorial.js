@@ -74,6 +74,7 @@ const Tutorial = (() => {
   function close(goNew = false) {
     if (!el) return;
     markSeen();
+    if (typeof Updates !== "undefined") Updates.markSeen();   // new players don't need the list of changes
     el.remove(); el = null;
     window.removeEventListener("keydown", onKey, true);
     if (goNew) location.hash = "#/new";

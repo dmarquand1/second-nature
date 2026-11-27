@@ -188,6 +188,11 @@ MIGRATIONS = [
     """
     ALTER TABLE decks ADD COLUMN answer_source TEXT NOT NULL DEFAULT 'anywhere';  -- 'anywhere' | 'mostly_deck' | 'deck'
     """,
+    # 7: order of new species (version 0.4.6)
+    """
+    ALTER TABLE decks ADD COLUMN new_order TEXT NOT NULL DEFAULT 'random';  -- see config.NEW_ORDERS
+    ALTER TABLE taxa ADD COLUMN obs_count INTEGER;                          -- observations on iNaturalist (all of it)
+    """,
 ]
 
 

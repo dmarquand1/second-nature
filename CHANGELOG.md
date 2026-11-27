@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.6 (2026-11-27) - order of new species, What's new page
+
+- **New species order** deck setting (New deck and Edit pages): **Mixed up** (default, as before), **In the order
+  added**, **Common first**, **Rare first** (by observations on iNaturalist), **Relatives of the ones you find hardest**,
+  **Relatives of the ones you know best** (by FSRS difficulty, genus > family > order), **One group at a time** and
+  **Variety first**. Species saved earlier get their observation count looked up (30 per request) when you choose
+  common or rare. Works in the local app and the website. Database upgrade: migration 7 (`decks.new_order`,
+  `taxa.obs_count`). Website: saved iNaturalist results are cleared once (storage version 3) to pick up the counts.
+- **What's new** page (`#/updates`, `static/updates.js`) with a dot on the menu link until you've seen the latest
+  changes. New players who see the welcome tour don't get the dot.
+- Tests: `tests/test_new_order.py` (6 tests), one more JS test and two more browser tests.
+
 ## 0.4.5 (2026-11-27) - choose where wrong answers come from
 
 - **Wrong answers from** deck setting (New deck and Edit pages): **Lookalikes from anywhere** (default, as before),

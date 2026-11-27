@@ -27,6 +27,8 @@ IQ.config = {
   MAX_DECK_SPECIES: 5000,
   // Where wrong answers come from (deck setting, see app/config.py ANSWER_SOURCES).
   ANSWER_SOURCES: ["anywhere", "mostly_deck", "deck"],
+  // The order new species are introduced in (deck setting, see app/config.py NEW_ORDERS).
+  NEW_ORDERS: ["random", "added", "common", "rare", "hard", "easy", "grouped", "varied"],
   DESIRED_RETENTION: 0.9,
   DEFAULT_NEW_PER_DAY: 20,
   DAY_STARTS_AT_HOUR: 4,

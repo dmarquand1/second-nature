@@ -17,7 +17,7 @@ from .db import get_conn
 from .distractors import prepare_candidates
 from .inat_client import InatError
 from .quiz import _photo_url, fill_pools_batched, next_observation
-from .taxa import ensure_details, ensure_details_many
+from .taxa import ensure_details, ensure_details_many, ensure_obs_counts
 
 
 def _cards_in_study_order(deck_id: int) -> list[dict]:
@@ -45,6 +45,8 @@ def warmup_deck(job_id: int, deck_id: int, params: dict, progress) -> dict:
     try:
         progress(0, total, "Fetching taxonomy for all species", force=True)
         ensure_details_many(ids)
+        if deck["new_order"] in ("common", "rare"):
+            ensure_obs_counts(deck_id)
         progress(0, total, "Fetching photos for all species", force=True)
         fill_pools_batched(ids, deck["place_id"])
     except InatError:

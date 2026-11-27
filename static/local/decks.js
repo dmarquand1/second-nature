@@ -132,7 +132,7 @@ IQ.decks = (() => {
 
   async function create(body) {
     const { name = "", source_type, num_choices, new_per_day, description = null, hide_dead = true, photo_choice = "mixed",
-            answer_source = "anywhere", ...rest } = body || {};
+            answer_source = "anywhere", new_order = "random", ...rest } = body || {};
     const params = Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null));
     validateSource(source_type, params);
     const stored = { ...params }; delete stored.species;
@@ -145,6 +145,7 @@ IQ.decks = (() => {
       new_per_day: clampInt(new_per_day, 0, 500, cfg.DEFAULT_NEW_PER_DAY), hide_dead: hide_dead !== false,
       photo_choice: ["mixed", "best", "any"].includes(photo_choice) ? photo_choice : "mixed",
       answer_source: cfg.ANSWER_SOURCES.includes(answer_source) ? answer_source : "anywhere",
+      new_order: cfg.NEW_ORDERS.includes(new_order) ? new_order : "random",
       created_at: U.now(),
     });
     const jobId = await J.submit("build", deck.id, { source_type, ...params });
@@ -187,10 +188,11 @@ IQ.decks = (() => {
     if (b.hide_dead != null) f.hide_dead = !!b.hide_dead;
     if (["mixed", "best", "any"].includes(b.photo_choice)) f.photo_choice = b.photo_choice;
     if (cfg.ANSWER_SOURCES.includes(b.answer_source)) f.answer_source = b.answer_source;
+    if (cfg.NEW_ORDERS.includes(b.new_order)) f.new_order = b.new_order;
     if (b.clear_place) { f.place_id = null; f.place_name = null; }
     else if (b.place_id != null) { f.place_id = Number(b.place_id); f.place_name = b.place_name ?? null; }
     await S.update("decks", deckId, f);
-    if (b.clear_place || b.place_id != null) await J.submit("warmup", deckId, {}, true);
+    if (b.clear_place || b.place_id != null || ["common", "rare"].includes(b.new_order)) await J.submit("warmup", deckId, {}, true);
   }
 
   async function remove(deckId) {
@@ -204,6 +206,7 @@ IQ.decks = (() => {
     const right = revs.reduce((n, r) => n + (r.correct ? 1 : 0), 0);
     return {
       ...d, source_params: d.source_params || {}, answer_source: d.answer_source || "anywhere",
+      new_order: d.new_order || "random",
       num_cards: cardCount(d.id), num_reviews: revs.length,
       accuracy: revs.length ? Math.round((right / revs.length) * 1000) / 1000 : null,
       queue: IQ.scheduler.queueCounts(d.id),

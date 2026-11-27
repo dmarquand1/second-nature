@@ -137,6 +137,7 @@ licences' and OpenStreetMap's rules, and the few things only you can decide.
 | `static/local/fsrs.js`, `scheduler.js` | Spaced repetition (same numbers as `app/fsrs.py`, checked by a test) |
 | `static/local/taxa.js`, `decks.js`, `distractors.js`, `quiz.js`, `warmup.js`, `stats.js`, `jobs.js` | Same as the Python modules with the same names |
 | `static/local/router.js` | Answers the screens' `/api/...` requests |
+| `static/updates.js` | What's new page (add an entry for each version players would notice) |
 | `static/tutorial.js` | Welcome tour for new players (shared with the local app) |
 | `static/views/settings.js` | Settings page: backup, restore, privacy, requests today, free up space, delete everything |
 | `web/tests.html`, `web/tests/` | Tests for the website version (with a pretend iNaturalist) |

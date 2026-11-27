@@ -85,3 +85,23 @@ preference, not a filter.
 Choose whether wrong answers are lookalikes from anywhere (default), mostly
 from this deck, or only from this deck. See
 [06 How the wrong answers are chosen](06-distractors.md#wrong-answers-from-deck-setting).
+
+## New species order
+
+Choose the order each deck introduces new species in (**New deck** and **Edit**).
+Due reviews always come first; this only changes which *new* species comes next.
+
+| Setting | Order |
+|---|---|
+| **Mixed up** (default) | Random |
+| **In the order added** | As added. Group and place decks add the most-seen species first |
+| **Common species first** | Most observations on iNaturalist first (worldwide) |
+| **Rare species first** | Fewest observations first |
+| **Relatives of the ones you find hardest** | Species in the same genus (then family, then order) as the ones you find hardest, by FSRS difficulty. Tackles the tricky groups head on |
+| **Relatives of the ones you know best** | Builds out from what you already know |
+| **One group at a time** | Finishes the genus and family you've started, then moves on, genus by genus |
+| **Variety first** | Species unlike any you've started, for a broad sweep before the fine detail |
+
+Until you've studied a few species, the relative-based orders have nothing to go
+on and behave like **Mixed up**. Ties are always in random order. Code:
+`order_new` in `app/scheduler.py` and `orderNew` in `static/local/scheduler.js`.

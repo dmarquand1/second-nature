@@ -54,6 +54,11 @@ Photos are not in the database: they're files in `data/images/` (see [08](08-spe
 * `decks.answer_source`: `anywhere` (default), `mostly_deck` or `deck`: where wrong answers
   come from (see [06 Distractors](06-distractors.md)).
 
+## Version 0.4.6 (migration 7)
+
+* `decks.new_order`: the order new species are introduced in (see [09 Decks](09-decks.md#new-species-order)).
+* `taxa.obs_count`: how many observations the species has on iNaturalist (for common/rare first).
+
 ## Ready for stats (step 7)
 
 `reviews` records every answer with time, rating, response time, what you

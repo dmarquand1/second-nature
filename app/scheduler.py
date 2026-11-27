@@ -3,7 +3,8 @@
 Queue order, like Anki:
   1. cards that are due (learning steps and reviews), most overdue first,
      mixed in with
-  2. new species, up to the deck's daily new-card limit,
+  2. new species, up to the deck's daily new-card limit, in the order the
+     deck asks for (see order_new),
   3. learning cards that will be due within 20 minutes ("learn ahead"),
   4. nothing: you're done for now. Practice mode keeps going with the
      cards that are due soonest (FSRS handles early reviews correctly).
@@ -110,6 +111,61 @@ def queue_counts(conn, deck_id: int, now: float | None = None) -> dict:
     }
 
 
+# How related two species are, for the "hard", "easy" and "varied" orders.
+_RELATED = (("genus_id", 1.0), ("family_id", 0.6), ("order_id", 0.3))
+
+
+def order_new(conn, deck_id: int, new_rows: list[dict], order: str, rng: random.Random) -> list[dict]:
+    """Sort a deck's new cards for the deck's "New species order" setting.
+
+    Ties (and species we know nothing about yet) are in random order."""
+    rows = list(new_rows)
+    rng.shuffle(rows)
+    if order == "random" or not rows:
+        return rows
+    if order == "added":
+        return sorted(rows, key=lambda r: r["id"])
+    taxa = {r["id"]: dict(r) for r in conn.execute(
+        "SELECT t.* FROM taxa t JOIN cards c ON c.taxon_id = t.id WHERE c.deck_id = ?", (deck_id,))}
+    tx = lambda r: taxa.get(r["taxon_id"], {})        # noqa: E731
+    if order in ("common", "rare"):
+        sign = -1 if order == "common" else 1
+        # Species whose count we don't know yet go last.
+        return sorted(rows, key=lambda r: (tx(r).get("obs_count") is None, sign * (tx(r).get("obs_count") or 0)))
+
+    started = [dict(r) for r in conn.execute(
+        "SELECT taxon_id, difficulty, state FROM cards WHERE deck_id = ? AND state != ?", (deck_id, NEW))]
+    if order == "grouped":
+        # Finish the groups you've started, then the next group, genus by genus.
+        fams = {tx(c).get("family_id") for c in started} - {None}
+        gens = {tx(c).get("genus_id") for c in started} - {None}
+        return sorted(rows, key=lambda r: (tx(r).get("family_id") not in fams, tx(r).get("genus_id") not in gens,
+                                           tx(r).get("order_id") or 0, tx(r).get("family_id") or 0,
+                                           tx(r).get("genus_id") or 0, tx(r).get("name", "")))
+    if order == "varied":
+        # Groups you've seen least of first, so you get a broad sweep before the fine detail.
+        seen = {k: {} for k, _ in _RELATED}
+        for c in started:
+            for k, _ in _RELATED:
+                if tx(c).get(k):
+                    seen[k][tx(c)[k]] = seen[k].get(tx(c)[k], 0) + 1
+        return sorted(rows, key=lambda r: tuple(seen[k].get(tx(r).get(k), 0) for k in ("order_id", "family_id", "genus_id")))
+
+    # "hard" / "easy": relatives of the species you find hardest / know best come first.
+    # FSRS difficulty runs from 1 (easy) to 10 (hard).
+    best = {k: {} for k, _ in _RELATED}
+    for c in started:
+        d = c["difficulty"] if c["difficulty"] is not None else 5.5
+        w = (d - 1) / 9 if order == "hard" else (10 - d) / 9
+        for k, _ in _RELATED:
+            if tx(c).get(k):
+                best[k][tx(c)[k]] = max(best[k].get(tx(c)[k], 0), w)
+
+    def score(r):
+        return max((best[k].get(tx(r).get(k), 0) * rel for k, rel in _RELATED), default=0)
+    return sorted(rows, key=lambda r: -score(r))
+
+
 def pick_next_card(conn, deck_id: int, rng: random.Random | None = None, now: float | None = None,
                    practice: bool = False) -> dict | None:
     rng = rng or random.Random()
@@ -141,8 +197,9 @@ def pick_next_card(conn, deck_id: int, rng: random.Random | None = None, now: fl
         new_rows = conn.execute(
             "SELECT * FROM cards WHERE deck_id = ? AND state = ?", (deck_id, NEW)
         ).fetchall()
-        new_rows = [dict(r) for r in new_rows]
-        rng.shuffle(new_rows)
+        deck_row = conn.execute("SELECT new_order FROM decks WHERE id = ?", (deck_id,)).fetchone()
+        new_rows = order_new(conn, deck_id, [dict(r) for r in new_rows],
+                             (deck_row["new_order"] if deck_row else None) or "random", rng)
 
     # Mix due and new cards in proportion to how many of each are left.
     due = [dict(r) for r in due]

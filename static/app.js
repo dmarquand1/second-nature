@@ -1,4 +1,10 @@
-// Hash router: #/  #/new  #/deck/3  #/deck/3/edit  #/quiz/3  #/stats  #/stats/3  #/settings
+// Choices for the deck setting "New species order" (New deck and Edit pages).
+const NEW_ORDER_OPTIONS = [["random", "Mixed up (random)"], ["added", "In the order added (groups and places: most seen first)"],
+    ["common", "Common species first"], ["rare", "Rare species first"],
+    ["hard", "Relatives of the ones you find hardest"], ["easy", "Relatives of the ones you know best"],
+    ["grouped", "One group at a time (genus by genus)"], ["varied", "Variety first (unlike any you've started)"]];
+
+// Hash router: #/  #/updates  #/new  #/deck/3  #/deck/3/edit  #/quiz/3  #/stats  #/stats/3  #/settings
 const routes = [
   [/^#?\/?$/, () => DecksView()],
   [/^#\/new$/, () => NewDeckView()],
@@ -7,6 +13,7 @@ const routes = [
   [/^#\/quiz\/(\d+)$/, (m) => QuizView(+m[1])],
   [/^#\/stats(?:\/(\d+))?$/, (m) => StatsView(m[1] ? +m[1] : null)],
   // Website version only (web/index.html loads views/settings.js).
+  [/^#\/updates$/, () => UpdatesView()],
   [/^#\/settings$/, () => (typeof SettingsView === "function" ? SettingsView() : DecksView())],
 ];
 
@@ -31,4 +38,5 @@ function route() {
 
 document.getElementById("nav-help").addEventListener("click", (e) => { e.preventDefault(); Shortcuts.toggle(); });
 window.addEventListener("hashchange", route);
+Updates.refreshDot();
 route();

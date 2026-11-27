@@ -25,7 +25,8 @@ def taxon_obj(tid):
     name, common, genus = SPECIES[tid]
     return {"id": tid, "name": name, "preferred_common_name": common, "rank": "species",
             "iconic_taxon_name": "Aves", "ancestor_ids": [ORDER, FAMILY, genus, tid],
-            "default_photo": {"square_url": f"https://img.test/{tid}/square.jpg"}}
+            "default_photo": {"square_url": f"https://img.test/{tid}/square.jpg"},
+            "observations_count": 1000 * (8 - tid)}       # Blackbird (1) most observed, Nightingale (7) least
 
 
 class FakeClient:

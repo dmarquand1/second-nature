@@ -60,6 +60,17 @@ PHOTO_CHOICES = ("mixed", "best", "any")
 #   deck        - only species in this deck (a small deck shows fewer choices)
 ANSWER_SOURCES = ("anywhere", "mostly_deck", "deck")
 
+# The order new species are introduced in (deck setting "new_order"):
+#   random  - mixed up (default)
+#   added   - the order they were added (group and place decks: most-seen first)
+#   common  - most observed on iNaturalist first
+#   rare    - least observed on iNaturalist first
+#   hard    - relatives of the species you find hardest first
+#   easy    - relatives of the species you know best first
+#   grouped - one group at a time (genus by genus, family by family)
+#   varied  - spread out: species unlike any you've started first
+NEW_ORDERS = ("random", "added", "common", "rare", "hard", "easy", "grouped", "varied")
+
 # Big lists
 MAX_DECK_SPECIES = 5000
 

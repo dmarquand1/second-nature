@@ -132,3 +132,41 @@ def test_welcome_tour_not_shown_to_players_with_decks(page):
     page.wait_for_selector(".deck")
     page.wait_for_timeout(300)
     assert page.locator(".tour").count() == 0
+
+
+def test_whats_new_page(page):
+    """Returning players see a dot on "What's new" until they've looked; new players don't."""
+    page.goto(page.base + "/play/#/stats")
+    page.wait_for_selector("#nav-updates")
+    assert "has-news" in page.get_attribute("#nav-updates", "class")       # never looked: dot shown
+    page.click("#nav-updates")
+    page.wait_for_selector(".update")
+    assert "New species order" in page.inner_text("#app")
+    assert "has-news" not in (page.get_attribute("#nav-updates", "class") or "")
+    page.reload()
+    page.wait_for_selector("#nav-updates")
+    assert "has-news" not in (page.get_attribute("#nav-updates", "class") or "")
+    # A brand-new player who finishes or skips the tour isn't shown the dot.
+    page.evaluate("localStorage.clear()")
+    page.goto(page.base + "/play/#/")
+    page.wait_for_selector(".tour")
+    page.click(".tour [data-skip]")
+    assert "has-news" not in (page.get_attribute("#nav-updates", "class") or "")
+
+
+def test_new_species_order_on_edit_page(page):
+    page.route("https://api.inaturalist.org/**", _fake_inat)
+    page.goto(page.base + "/play/#/new")
+    page.evaluate("localStorage.setItem('sn.tutorialSeen', '1')")
+    page.fill("input[name=name]", "Thrushes")
+    page.fill("textarea[name=species]", "Turdus merula\nSong Thrush")
+    page.select_option("select[name=new_order]", "rare")
+    page.click("button[type=submit]")
+    page.wait_for_url("**/#/deck/*")
+    assert page.evaluate("IQ.store.get('decks', 1).new_order") == "rare"
+    page.goto(page.base + "/play/#/deck/1/edit")
+    page.wait_for_selector("#e-order")
+    assert page.input_value("#e-order") == "rare"
+    page.select_option("#e-order", "grouped")
+    page.click("#save")
+    page.wait_for_function("IQ.store.get('decks', 1).new_order === 'grouped'")

@@ -12,7 +12,7 @@ window.IQ = window.IQ || {};
 
 IQ.store = (() => {
   const DB_NAME = "inat-quiz";
-  const DB_VERSION = 2;       // 2 (0.4.3): cache rebuilt with a "fetched_at" index, so trimming is quick
+  const DB_VERSION = 3;       // 2 (0.4.3): cache rebuilt with a "fetched_at" index; 3 (0.4.6): cleared to pick up species counts
   const TABLES = ["taxa", "decks", "cards", "observations", "questions", "reviews", "jobs"];
   const AUTO = new Set(["decks", "cards", "questions", "reviews", "jobs"]);   // ids we make up ourselves
   let db = null;
@@ -31,7 +31,8 @@ IQ.store = (() => {
         const d = r.result;
         for (const t of TABLES) if (!d.objectStoreNames.contains(t)) d.createObjectStore(t, { keyPath: "id" });
         // Before 0.4.3 the cache kept iNaturalist's full (large) answers: start it afresh.
-        if (e.oldVersion < 2 && d.objectStoreNames.contains("cache")) d.deleteObjectStore("cache");
+        // 0.4.6 also saves how often each species is observed, so start the cache afresh again.
+        if (e.oldVersion < 3 && d.objectStoreNames.contains("cache")) d.deleteObjectStore("cache");
         if (!d.objectStoreNames.contains("cache")) {
           d.createObjectStore("cache", { keyPath: "key" }).createIndex("fetched_at", "fetched_at");
         }

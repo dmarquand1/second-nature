@@ -10,7 +10,7 @@ from . import config, decks, images, jobs, quiz, stats, warmup
 from .db import init_db
 from .inat_client import InatError, get_client
 
-__version__ = "0.4.5"
+__version__ = "0.4.6"
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ class DeckCreate(BaseModel):
     hide_dead: bool = True
     photo_choice: str = Field(default="mixed", pattern="^(mixed|best|any)$")
     answer_source: str = Field(default="anywhere", pattern="^(anywhere|mostly_deck|deck)$")
+    new_order: str = Field(default="random", pattern="^(random|added|common|rare|hard|easy|grouped|varied)$")
     description: str | None = None
 
 
@@ -55,6 +56,7 @@ class DeckSettings(BaseModel):
     hide_dead: bool | None = None
     photo_choice: str | None = Field(default=None, pattern="^(mixed|best|any)$")
     answer_source: str | None = Field(default=None, pattern="^(anywhere|mostly_deck|deck)$")
+    new_order: str | None = Field(default=None, pattern="^(random|added|common|rare|hard|easy|grouped|varied)$")
 
 
 class SpeciesAdd(BaseModel):
@@ -110,11 +112,12 @@ def list_decks():
 @app.post("/api/decks")
 def create_deck(body: DeckCreate):
     params = body.model_dump(exclude={"name", "source_type", "num_choices", "new_per_day", "description",
-                                      "hide_dead", "photo_choice", "answer_source"},
+                                      "hide_dead", "photo_choice", "answer_source", "new_order"},
                              exclude_none=True)
     return _inat_guard(decks.create_deck, body.name, body.source_type, params,
                        num_choices=body.num_choices, new_per_day=body.new_per_day, hide_dead=body.hide_dead,
                        photo_choice=body.photo_choice, answer_source=body.answer_source,
+                       new_order=body.new_order,
                        description=body.description)
 
 

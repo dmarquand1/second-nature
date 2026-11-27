@@ -16,8 +16,8 @@ def upsert_taxon(conn, t: dict) -> None:
     conn.execute(
         """
         INSERT INTO taxa (id, name, common_name, rank, iconic_taxon_name, ancestor_ids,
-                          photo_url, wikipedia_url, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          photo_url, wikipedia_url, obs_count, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             common_name = COALESCE(excluded.common_name, taxa.common_name),
@@ -26,13 +26,14 @@ def upsert_taxon(conn, t: dict) -> None:
             ancestor_ids = COALESCE(excluded.ancestor_ids, taxa.ancestor_ids),
             photo_url = COALESCE(excluded.photo_url, taxa.photo_url),
             wikipedia_url = COALESCE(excluded.wikipedia_url, taxa.wikipedia_url),
+            obs_count = COALESCE(excluded.obs_count, taxa.obs_count),
             updated_at = excluded.updated_at
         """,
         (
             t["id"], t["name"], t.get("preferred_common_name"), t.get("rank"),
             t.get("iconic_taxon_name"),
             json.dumps(t["ancestor_ids"]) if t.get("ancestor_ids") else None,
-            _photo(t), t.get("wikipedia_url"), time.time(),
+            _photo(t), t.get("wikipedia_url"), t.get("observations_count"), time.time(),
         ),
     )
 
@@ -113,3 +114,20 @@ def public(t: dict) -> dict:
         "url": f"https://www.inaturalist.org/taxa/{t['id']}",
         "wikipedia_url": t.get("wikipedia_url"),
     }
+
+
+def ensure_obs_counts(deck_id: int) -> int:
+    """Look up how often each species in the deck has been observed on iNaturalist,
+    for species saved before version 0.4.6 (30 per request). Used by the common/rare orders."""
+    with get_conn() as conn:
+        todo = [r[0] for r in conn.execute(
+            """SELECT t.id FROM cards c JOIN taxa t ON t.id = c.taxon_id
+               WHERE c.deck_id = ? AND t.obs_count IS NULL""", (deck_id,)).fetchall()]
+    if not todo:
+        return 0
+    found = get_client().taxa_by_ids(todo)
+    with get_conn() as conn:
+        for t in found:
+            if t.get("observations_count") is not None:
+                conn.execute("UPDATE taxa SET obs_count = ? WHERE id = ?", (t["observations_count"], t["id"]))
+    return len(found)

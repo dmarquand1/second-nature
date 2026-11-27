@@ -241,3 +241,11 @@ label.btn { cursor: pointer; }
 .tour-dot.on { background: var(--accent); }
 .tour-buttons { gap: 8px; }
 .btn.link { background: none; border-color: transparent; color: var(--muted); text-decoration: underline; padding-left: 0; }
+
+/* What's new (static/updates.js) */
+.update { margin-bottom: 12px; }
+.update h2 { margin-top: 0; font-size: 1.1rem; }
+.update ul { margin: 0; padding-left: 1.2em; }
+.update li { margin: 4px 0; }
+#nav-updates.has-news::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 4px;
+  border-radius: 50%; background: var(--wrong); vertical-align: super; }

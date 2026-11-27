@@ -27,6 +27,9 @@ async function EditDeckView(deckId) {
           <select id="e-photos">${[["mixed", "Mixed: well-liked photos more often"], ["best", "Best first: most-favourited photos first"],
             ["any", "Any: favourites make no difference"]].map(([v, t]) =>
             `<option value="${v}" ${(d.photo_choice || "mixed") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label>New species order
+          <select id="e-order">${NEW_ORDER_OPTIONS.map(([v, t]) =>
+            `<option value="${v}" ${(d.new_order || "random") === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
         <label>Wrong answers from
           <select id="e-answers">${[["anywhere", "Lookalikes from anywhere"],
             ["mostly_deck", "Mostly this deck (lookalikes only if it runs short)"],
@@ -101,6 +104,7 @@ async function EditDeckView(deckId) {
       hide_dead: document.getElementById("e-hide-dead").checked,
       photo_choice: document.getElementById("e-photos").value,
       answer_source: document.getElementById("e-answers").value,
+      new_order: document.getElementById("e-order").value,
     };
     if (place && place.id !== d.place_id) Object.assign(body, { place_id: place.id, place_name: place.name });
     if (!place && d.place_id) body.clear_place = true;

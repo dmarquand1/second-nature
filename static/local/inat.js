@@ -104,7 +104,7 @@ IQ.inat = (() => {
   function slimTaxon(t) {
     if (!t) return t;
     const out = pick(t, ["id", "name", "preferred_common_name", "rank", "iconic_taxon_name", "ancestor_ids",
-                         "wikipedia_url", "matched_term"]);
+                         "wikipedia_url", "matched_term", "observations_count"]);
     if (t.ancestors) out.ancestors = t.ancestors.map((a) => ({ id: a.id, rank: a.rank }));
     if (t.default_photo) out.default_photo = pick(t.default_photo, ["square_url", "medium_url", "url", "license_code"]);
     return out;

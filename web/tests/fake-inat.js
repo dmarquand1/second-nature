@@ -19,7 +19,8 @@ const FakeInat = (() => {
     const [name, common, genus] = SPECIES[id];
     const t = { id, name, preferred_common_name: common, rank: "species", iconic_taxon_name: "Aves",
                 ancestor_ids: [ORDER, FAMILY, genus, id],
-                default_photo: { square_url: `https://img.test/${id}/square.jpg`, license_code: "cc-by" } };
+                default_photo: { square_url: `https://img.test/${id}/square.jpg`, license_code: "cc-by" },
+                observations_count: 1000 * (8 - id) };      // Blackbird (1) most observed, Nightingale (7) least
     if (withAncestors) t.ancestors = [{ id: ORDER, rank: "order" }, { id: FAMILY, rank: "family" }, { id: genus, rank: "genus" }];
     return t;
   };

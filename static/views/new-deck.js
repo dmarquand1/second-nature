@@ -56,6 +56,9 @@ function NewDeckView() {
             <option value="any">Any: favourites make no difference</option>
           </select>
         </label>
+        <label>New species order
+          <select name="new_order">${NEW_ORDER_OPTIONS.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>
+        </label>
         <label>Wrong answers from
           <select name="answer_source">
             <option value="anywhere" selected>Lookalikes from anywhere</option>
@@ -132,6 +135,7 @@ function NewDeckView() {
       hide_dead: form.hide_dead.checked,
       photo_choice: form.photo_choice.value,
       answer_source: form.answer_source.value,
+      new_order: form.new_order.value,
     };
     if (type === "list") body.species = form.species.value.split("\n").map((s) => s.trim()).filter(Boolean);
     if (taxon && type !== "list") { body.taxon_id = taxon.id; body.taxon_name = taxon.common_name || taxon.name; }

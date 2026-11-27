@@ -24,6 +24,7 @@ IQ.warmup = (() => {
     try {
       progress(0, total, "Fetching taxonomy for all species", true);
       await IQ.taxa.ensureDetailsMany(ids, o);
+      if (["common", "rare"].includes(deck.new_order)) await IQ.taxa.ensureObsCounts(deckId, o);
       progress(0, total, "Fetching photos for all species", true);
       await Q.fillPoolsBatched(ids, deck.place_id, 10, 5, o);
     } catch (e) { if (e.status !== 502) throw e; }

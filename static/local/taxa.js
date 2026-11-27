@@ -17,6 +17,7 @@ IQ.taxa = (() => {
       photo_url: photo ?? old.photo_url ?? null,
       photo_license: photo ? (p.license_code ?? null) : (old.photo_license ?? null),
       wikipedia_url: t.wikipedia_url ?? old.wikipedia_url ?? null,
+      obs_count: t.observations_count ?? old.obs_count ?? null,
       genus_id: old.genus_id ?? null, family_id: old.family_id ?? null, order_id: old.order_id ?? null,
       details_fetched: old.details_fetched ?? 0,
       updated_at: U.now(),
@@ -72,5 +73,16 @@ IQ.taxa = (() => {
     };
   }
 
-  return { upsert, ensureDetails, ensureDetailsMany, photoFor, public: pub, get: (id) => S.get("taxa", id) };
+  // How often each species in the deck has been observed on iNaturalist, for species saved
+  // before version 0.4.6 (30 per request). Used by the common/rare orders.
+  async function ensureObsCounts(deckId, o = {}) {
+    const todo = S.where("cards", (c) => c.deck_id === deckId).map((c) => c.taxon_id)
+      .filter((id) => (S.get("taxa", id) || {}).obs_count == null);
+    if (!todo.length) return 0;
+    const found = await IQ.inat.taxaByIds(todo, o);
+    for (const t of found) if (t.observations_count != null) await S.update("taxa", t.id, { obs_count: t.observations_count });
+    return found.length;
+  }
+
+  return { ensureObsCounts, upsert, ensureDetails, ensureDetailsMany, photoFor, public: pub, get: (id) => S.get("taxa", id) };
 })();

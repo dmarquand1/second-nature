@@ -317,6 +317,43 @@ test("wrong answers from: anywhere by default, only this deck, mostly this deck"
   ok(c.get(2).score > c.get(6).score, "close relatives score higher");
 });
 
+test("new species order: added, common, rare, relatives, grouped, variety", async () => {
+  const all = ["Turdus merula", "Song Thrush", "Mistle Thrush", "Redwing", "Fieldfare", "European Robin", "Common Nightingale"];
+  const d = await listDeck(all);
+  eq(d.new_order, "random");
+  const order = (o) => IQ.scheduler.orderNew(d.id, IQ.store.where("cards", (c) => c.deck_id === d.id && c.state === 0), o)
+    .map((c) => c.taxon_id);
+  eq(order("added"), [1, 2, 3, 4, 5, 6, 7]);
+  eq(order("common"), [1, 2, 3, 4, 5, 6, 7]);
+  eq(order("rare"), [7, 6, 5, 4, 3, 2, 1]);
+  eq([...order("random")].sort(), [1, 2, 3, 4, 5, 6, 7]);
+  const start = async (tid, difficulty) => {
+    const c = IQ.store.where("cards", (c) => c.deck_id === d.id && c.taxon_id === tid)[0];
+    await IQ.store.update("cards", c.id, { state: 2, difficulty, due: 9e12 });
+  };
+  await start(6, 9.5);                  // Robin: hard
+  await start(1, 1.5);                  // Blackbird: easy
+  eq(order("hard")[0], 7, "the hard Robin's relative first");
+  ok([2, 3, 4, 5].includes(order("easy")[0]), "the easy Blackbird's relatives first");
+  eq(order("grouped")[0], 7, "finish the genus you've started");
+  const p = await api2("PATCH", `/api/decks/${d.id}`, { new_order: "rare" });
+  eq(p.new_order, "rare");
+  const q = await api2("GET", `/api/decks/${d.id}/next`);
+  eq(IQ.store.get("cards", IQ.store.get("questions", q.question_id).card_id).taxon_id, 7, "the quiz follows the order");
+  // Species saved before 0.4.6 have no count: setting common/rare looks them up.
+  for (const t of IQ.store.all("taxa")) await IQ.store.update("taxa", t.id, { obs_count: null });
+  await api2("PATCH", `/api/decks/${d.id}`, { new_order: "common" });
+  await IQ.jobs.waitIdle();
+  eq(IQ.store.get("taxa", 7).obs_count, 1000);
+  const v = await listDeck(all);
+  for (const tid of [1, 2]) {
+    const c = IQ.store.where("cards", (c) => c.deck_id === v.id && c.taxon_id === tid)[0];
+    await IQ.store.update("cards", c.id, { state: 2, difficulty: 5, due: 9e12 });
+  }
+  const vo = IQ.scheduler.orderNew(v.id, IQ.store.where("cards", (c) => c.deck_id === v.id && c.state === 0), "varied");
+  eq(vo.slice(0, 2).map((c) => c.taxon_id).sort(), [6, 7], "variety: something different first");
+});
+
 // ---- stats and backup -------------------------------------------------------
 test("stats: totals, mix-ups, forecast", async () => {
   const d = await listDeck();

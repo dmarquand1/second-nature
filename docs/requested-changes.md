@@ -99,6 +99,13 @@ open-licence photos only by default, switchable in Settings.
 
 ## Shipped in v0.4.2
 
+### 19. Choose the order new species are shown, and a What's new page
+*Noted 2026-11-27.* Status: **Done (0.4.6)**.
+
+An option to change the order new species come in, e.g. rare species first,
+species similar to the ones you find hardest or easiest. Also a page on the
+website telling players about new features.
+
 ### 18. Option to keep wrong answers within the deck
 *Noted 2026-11-27.* Status: **Done (0.4.5)**.
 
@@ -147,12 +154,18 @@ delete saved progress. Show the result in Settings.
 
 ## Open
 
-Nothing yet. Add new requests here.
+### Ideas for more new-species orders (not built)
+*Noted 2026-11-27.*
+
+* **In season now**: species most often seen at this time of year (needs one
+  extra iNaturalist request per species for its monthly pattern).
+* **Near me**: species most seen near your location (needs location permission).
 
 ## Done
 
 | Change | Version |
 |---|---|
+| New species order, What's new page | 0.4.6 |
 | "Wrong answers from" deck setting | 0.4.5 |
 | Welcome tour for new players (skippable) | 0.4.4 |
 | Lighter website storage, Free up space button | 0.4.3 |

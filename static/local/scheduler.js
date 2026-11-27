@@ -60,6 +60,43 @@ IQ.scheduler = (() => {
     };
   }
 
+  // Sort a deck's new cards for its "New species order" setting (same as app/scheduler.py
+  // order_new). Ties, and species we know nothing about yet, are in random order.
+  const RELATED = [["genus_id", 1.0], ["family_id", 0.6], ["order_id", 0.3]];
+  function orderNew(deckId, rows, order) {
+    rows = U.shuffle([...rows]);
+    if (order === "random" || !rows.length) return rows;
+    const by = (key) => (a, b) => { const x = key(a), y = key(b);
+      for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1; return 0; };
+    if (order === "added") return rows.sort((a, b) => a.id - b.id);
+    const tx = (r) => S.get("taxa", r.taxon_id) || {};
+    if (order === "common" || order === "rare") {
+      const sign = order === "common" ? -1 : 1;
+      return rows.sort(by((r) => [tx(r).obs_count == null ? 1 : 0, sign * (tx(r).obs_count || 0)]));
+    }
+    const started = deckCards(deckId).filter((c) => c.state !== F.NEW);
+    if (order === "grouped") {         // finish the groups you've started, then the next, genus by genus
+      const fams = new Set(started.map((c) => tx(c).family_id).filter(Boolean));
+      const gens = new Set(started.map((c) => tx(c).genus_id).filter(Boolean));
+      return rows.sort(by((r) => { const t = tx(r); return [fams.has(t.family_id) ? 0 : 1, gens.has(t.genus_id) ? 0 : 1,
+        t.order_id || 0, t.family_id || 0, t.genus_id || 0, t.name || ""]; }));
+    }
+    if (order === "varied") {          // groups you've seen least of first
+      const seen = { order_id: new Map(), family_id: new Map(), genus_id: new Map() };
+      for (const c of started) for (const k in seen) { const v = tx(c)[k]; if (v) seen[k].set(v, (seen[k].get(v) || 0) + 1); }
+      return rows.sort(by((r) => ["order_id", "family_id", "genus_id"].map((k) => seen[k].get(tx(r)[k]) || 0)));
+    }
+    // "hard" / "easy": relatives of the species you find hardest / know best first (FSRS difficulty 1-10).
+    const best = { genus_id: new Map(), family_id: new Map(), order_id: new Map() };
+    for (const c of started) {
+      const d = c.difficulty ?? 5.5;
+      const w = order === "hard" ? (d - 1) / 9 : (10 - d) / 9;
+      for (const [k] of RELATED) { const v = tx(c)[k]; if (v) best[k].set(v, Math.max(best[k].get(v) || 0, w)); }
+    }
+    const score = (r) => Math.max(0, ...RELATED.map(([k, rel]) => (best[k].get(tx(r)[k]) || 0) * rel));
+    return rows.sort(by((r) => [-score(r)]));
+  }
+
   function pickNextCard(deckId, { now, practice = false } = {}) {
     now = now ?? U.now();
     const qs = S.where("questions", (q) => q.deck_id === deckId);
@@ -73,7 +110,8 @@ IQ.scheduler = (() => {
     const cards = deckCards(deckId);
     const due = cards.filter((c) => c.state !== F.NEW && c.due <= now).sort(byDue);
     const counts = queueCounts(deckId, now);
-    const newRows = counts.new_available > 0 ? U.shuffle(cards.filter((c) => c.state === F.NEW)) : [];
+    const newRows = counts.new_available > 0
+      ? orderNew(deckId, cards.filter((c) => c.state === F.NEW), (S.get("decks", deckId) || {}).new_order || "random") : [];
 
     const freshDue = due.filter((r) => !avoid.has(r.id));
     const freshNew = newRows.filter((r) => !avoid.has(r.id));
@@ -96,5 +134,5 @@ IQ.scheduler = (() => {
   }
 
   return { fsrs, LEARN_AHEAD_SECONDS, ratingFromAnswer, dayStart, toState, saveState, applyRating,
-           queueCounts, pickNextCard };
+           queueCounts, orderNew, pickNextCard };
 })();

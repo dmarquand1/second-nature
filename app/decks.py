@@ -186,7 +186,8 @@ def _validate_source(source_type: str, params: dict) -> None:
 
 def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
                 description: str | None = None, new_per_day: int = config.DEFAULT_NEW_PER_DAY,
-                hide_dead: bool = True, photo_choice: str = "mixed", answer_source: str = "anywhere") -> dict:
+                hide_dead: bool = True, photo_choice: str = "mixed", answer_source: str = "anywhere",
+                new_order: str = "random") -> dict:
     """Create the deck straight away and find its species in the background."""
     _validate_source(source_type, params)
     num_choices = max(4, min(int(num_choices), 6))
@@ -196,12 +197,13 @@ def create_deck(name: str, source_type: str, params: dict, num_choices: int = 5,
     with get_conn() as conn:
         cur = conn.execute(
             """INSERT INTO decks (name, description, source_type, source_params, place_id, place_name,
-                                  num_choices, new_per_day, hide_dead, photo_choice, answer_source, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                  num_choices, new_per_day, hide_dead, photo_choice, answer_source, new_order, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (name.strip() or "Untitled deck", description, source_type, json.dumps(stored),
              params.get("place_id"), params.get("place_name"), num_choices, int(new_per_day),
              1 if hide_dead else 0, photo_choice if photo_choice in config.PHOTO_CHOICES else "mixed",
-             answer_source if answer_source in config.ANSWER_SOURCES else "anywhere", time.time()),
+             answer_source if answer_source in config.ANSWER_SOURCES else "anywhere",
+             new_order if new_order in config.NEW_ORDERS else "random", time.time()),
         )
         deck_id = cur.lastrowid
     job_id = jobs.submit("build", deck_id, {"source_type": source_type, **params})
@@ -241,7 +243,8 @@ def update_settings(deck_id: int, name: str | None = None, num_choices: int | No
                     new_per_day: int | None = None, description: str | None = None,
                     place_id: int | None = None, place_name: str | None = None,
                     clear_place: bool = False, hide_dead: bool | None = None,
-                    photo_choice: str | None = None, answer_source: str | None = None) -> None:
+                    photo_choice: str | None = None, answer_source: str | None = None,
+                    new_order: str | None = None) -> None:
     with get_conn() as conn:
         if name is not None and name.strip():
             conn.execute("UPDATE decks SET name = ? WHERE id = ?", (name.strip(), deck_id))
@@ -253,6 +256,8 @@ def update_settings(deck_id: int, name: str | None = None, num_choices: int | No
             conn.execute("UPDATE decks SET new_per_day = ? WHERE id = ?", (max(0, new_per_day), deck_id))
         if photo_choice in config.PHOTO_CHOICES:
             conn.execute("UPDATE decks SET photo_choice = ? WHERE id = ?", (photo_choice, deck_id))
+        if new_order in config.NEW_ORDERS:
+            conn.execute("UPDATE decks SET new_order = ? WHERE id = ?", (new_order, deck_id))
         if answer_source in config.ANSWER_SOURCES:
             conn.execute("UPDATE decks SET answer_source = ? WHERE id = ?", (answer_source, deck_id))
         if hide_dead is not None:
@@ -262,7 +267,7 @@ def update_settings(deck_id: int, name: str | None = None, num_choices: int | No
         elif place_id is not None:
             conn.execute("UPDATE decks SET place_id = ?, place_name = ? WHERE id = ?",
                          (place_id, place_name, deck_id))
-    if clear_place or place_id is not None:
+    if clear_place or place_id is not None or new_order in ("common", "rare"):
         jobs.submit("warmup", deck_id, {}, dedupe=True)
 
 
